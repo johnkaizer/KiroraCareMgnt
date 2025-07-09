@@ -17,6 +17,26 @@ public class KiroraSysController {
         return "admin_dashboard";
     }
 
+    @GetMapping("/children_reps_dashboard")
+    public String childrenRepsDashboard() {
+        return "children_reps_dashboard";
+    }
+
+    @GetMapping("/volunteers_dashboard")
+    public String volunteersDashboard() {
+        return "volunteers_dashboard";
+    }
+
+    @GetMapping("/doctors_dashboard")
+    public String doctorsDashboard() {
+        return "doctors_dashboard";
+    }
+
+    @GetMapping("/login_error")
+    public String loginError() {
+        return "login_error";
+    }
+
     @GetMapping("/fragments/{page}")
     public String loadPage(@PathVariable String page) {
         return "fragments/" + page;

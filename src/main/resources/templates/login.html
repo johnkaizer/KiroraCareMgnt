@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kikora Management System - Login</title>
+    <title>Kirora Kids Care Management System - Login</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -13,152 +14,308 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #93c5fd 100%);
+            background: linear-gradient(135deg, #4a90e2 0%, #0077be 50%, #005a8b 100%);
             min-height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background elements */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)" opacity="0.8"><animate attributeName="cy" values="20;80;20" dur="4s" repeatCount="indefinite"/></circle><circle cx="80" cy="80" r="3" fill="rgba(255,255,255,0.1)" opacity="0.6"><animate attributeName="cx" values="80;20;80" dur="6s" repeatCount="indefinite"/></circle><circle cx="50" cy="50" r="1.5" fill="rgba(255,255,255,0.1)" opacity="0.7"><animate attributeName="r" values="1.5;4;1.5" dur="3s" repeatCount="indefinite"/></circle></svg>');
+            pointer-events: none;
+            z-index: 1;
         }
 
         .login-container {
-            background: white;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
+            display: flex;
+            flex: 1;
+            min-height: calc(100vh - 60px);
+            position: relative;
+            z-index: 2;
         }
 
-        .logo {
-            margin-bottom: 30px;
+        .login-left {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 50%, #1e3a8a 100%);
+            color: white;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-left::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            top: -150px;
+            right: -150px;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .login-left::after {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+            border-radius: 50%;
+            bottom: -100px;
+            left: -100px;
+            animation: float 6s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        .logo-container {
+            position: relative;
+            z-index: 2;
+            margin-bottom: 2rem;
         }
 
         .logo-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 15px;
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            width: 140px;
+            height: 140px;
+            background: linear-gradient(45deg, #2563eb, #1d4ed8);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 40px;
-            color: white;
-            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 15px 40px rgba(37, 99, 235, 0.4);
+            animation: pulse 3s ease-in-out infinite;
+            position: relative;
+            border: 4px solid rgba(255,255,255,0.3);
         }
 
-        .logo h1 {
-            color: #000000;
-            font-size: 24px;
-            margin-bottom: 5px;
+        .logo-icon::before {
+            content: '';
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 15px 40px rgba(37, 99, 235, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 20px 50px rgba(37, 99, 235, 0.6); }
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .logo-icon svg {
+            width: 70px;
+            height: 70px;
+            fill: white;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .login-left h1 {
+            font-size: 2.8rem;
             font-weight: 700;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 2;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #fff, #f8fafc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .logo p {
-            color: #000000;
-            font-size: 14px;
-            font-weight: 500;
+        .login-left p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            position: relative;
+            z-index: 2;
+            max-width: 350px;
+            line-height: 1.6;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
 
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
+        .login-right {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 3rem;
+            position: relative;
+            box-shadow: -10px 0 40px rgba(0,0,0,0.1);
+            border-radius: 20px 0 0 20px;
         }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #000000;
-            font-weight: 600;
-        }
-
-        .form-group input {
+        .login-form-container {
+            max-width: 450px;
             width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #dbeafe;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            background: #f8fafc;
+            margin: 0 auto;
         }
 
-        .form-group input:focus {
+        .login-right h2 {
+            font-size: 2.2rem;
+            color: #1e3a8a;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            background: linear-gradient(45deg, #3b82f6, #1e40af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-subtitle {
+            color: #64748b;
+            margin-bottom: 2.5rem;
+            font-size: 1.1rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.8rem;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.7rem;
+            color: #1e3a8a;
+            font-weight: 500;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 1.2rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+            position: relative;
+        }
+
+        .input-group input:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
-        }
-
-        .login-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
         }
 
-        .login-btn:active {
-            transform: translateY(0);
-        }
-
-        .error-message {
-            color: #dc2626;
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 5px;
-            background: #fef2f2;
-            border-left: 4px solid #dc2626;
-            display: none;
-        }
-
-        .success-message {
-            color: #000000;
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 5px;
-            background: #f0f9ff;
-            border-left: 4px solid #3b82f6;
-            display: none;
+        .input-group input::placeholder {
+            color: #94a3b8;
         }
 
         .forgot-password {
-            margin-top: 20px;
-            color: #3b82f6;
-            font-size: 14px;
+            text-align: right;
+            margin-bottom: 2rem;
         }
 
         .forgot-password a {
-            color: #000000;
+            color: #3b82f6;
             text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
             font-weight: 500;
         }
 
         .forgot-password a:hover {
+            color: #1e40af;
             text-decoration: underline;
-            color: #3b82f6;
         }
 
-        /* Loading spinner */
+        .btn-login {
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            padding: 1.2rem 2rem;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Overlay Styles */
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 20px 0 0 20px;
+        }
+
         .spinner {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3b82f6;
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #3b82f6;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
             animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: 10px;
         }
 
         @keyframes spin {
@@ -166,124 +323,427 @@
             100% { transform: rotate(360deg); }
         }
 
-        .loading {
+        .loading-text {
+            margin-top: 1rem;
+            color: #1e3a8a;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        /* Modal Styles */
+        .modal {
             display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 2.5rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover {
+            color: #3b82f6;
+        }
+
+        .modal h3 {
+            color: #1e3a8a;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            background: linear-gradient(45deg, #3b82f6, #1e40af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .modal p {
+            color: #64748b;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-verify, .btn-reset {
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-verify:hover, .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .footer {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+            color: #93c5fd;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 968px) {
+            .login-container {
+                flex-direction: column;
+            }
+
+            .login-left {
+                flex: none;
+                min-height: 250px;
+                padding: 2rem;
+                border-radius: 0;
+            }
+
+            .login-right {
+                border-radius: 0;
+            }
+
+            .login-left h1 {
+                font-size: 2.2rem;
+            }
+
+            .logo-icon {
+                width: 100px;
+                height: 100px;
+            }
+
+            .logo-icon svg {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .login-right {
+                padding: 2rem 1.5rem;
+            }
+
+            .modal-content {
+                margin: 10% auto;
+                padding: 1.5rem;
+            }
+        }
+
+        /* Alert Styles */
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 15px;
+            color: white;
+            font-weight: 500;
+            z-index: 3000;
+            animation: slideInRight 0.3s ease;
+            max-width: 400px;
+        }
+
+        .alert.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .alert.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
 <body>
 <div class="login-container">
-    <div class="logo">
-        <div class="logo-icon">
-            👶
+    <div class="login-left">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7V9C15 11.8 12.8 14 10 14S5 11.8 5 9V7L3 7V9C3 12.24 5.29 14.93 8.4 15.91C8.78 16.95 9.8 17.69 11 17.69C12.2 17.69 13.22 16.95 13.6 15.91C16.71 14.93 19 12.24 19 9H21Z"/>
+                    <circle cx="12" cy="20" r="2"/>
+                </svg>
+            </div>
+            <h1>Kirora Kids Care</h1>
+            <p>Nurturing young minds and caring for children with comprehensive management solutions</p>
         </div>
-        <h1>Kikora Management System</h1>
-        <p>Street Children Rescue Centre</p>
     </div>
-
-    <form id="loginForm">
-        <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" required>
+    <div class="login-right">
+        <div class="login-form-container">
+            <h2>Welcome Back</h2>
+            <p class="login-subtitle">Please sign in to your account</p>
+            <form id="loginForm">
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter your username" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <div class="forgot-password">
+                    <a href="#">Forgot your password?</a>
+                </div>
+                <button type="submit" class="btn-login">Sign In</button>
+            </form>
+            <!-- Loading Overlay -->
+            <div class="loading-overlay">
+                <div>
+                    <div class="spinner"></div>
+                    <div class="loading-text">Signing you in...</div>
+                </div>
+            </div>
         </div>
-
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-
-        <button type="submit" class="login-btn">
-            <span class="loading"><div class="spinner"></div>Logging in...</span>
-            <span class="login-text">Login</span>
-        </button>
-    </form>
-
-    <div id="errorMessage" class="error-message"></div>
-    <div id="successMessage" class="success-message"></div>
+    </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script>
-    $(document).ready(function() {
-        // Hardcoded admin credentials (for development)
-        const ADMIN_CREDENTIALS = {
-            username: 'admin',
-            password: 'kikora2025'
-        };
+<!-- Password Reset Modal -->
+<div id="resetPasswordModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="step1">
+            <h3>Reset Password</h3>
+            <p>Please enter your username and ID number to verify your identity.</p>
+            <div class="input-group">
+                <label for="resetUsername">Username</label>
+                <input type="text" id="resetUsername" placeholder="Enter your username" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label for="resetIdNumber">ID Number</label>
+                <input type="text" id="resetIdNumber" placeholder="Enter your ID number" autocomplete="off">
+            </div>
+            <button type="button" class="btn-verify">Verify Identity</button>
+        </div>
+        <div id="step2" style="display: none;">
+            <h3>Set New Password</h3>
+            <div class="input-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password">
+            </div>
+            <div class="input-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm new password">
+            </div>
+            <button type="button" class="btn-reset">Update Password</button>
+        </div>
+    </div>
+</div>
 
-        $('#loginForm').on('submit', function(e) {
+<div class="footer">
+    Developed and Maintained by <strong>Lemako Lomnyak Paulo</strong>
+</div>
+
+<script>
+    // Simple alert function
+    function showAlert(message, type) {
+        const alertDiv = $('<div></div>')
+            .addClass(`alert ${type}`)
+            .text(message);
+
+        $('body').append(alertDiv);
+
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+
+    $(document).ready(function () {
+        // Login form submission using AJAX
+        $('#loginForm').on('submit', function (e) {
             e.preventDefault();
 
             const username = $('#username').val().trim();
-            const password = $('#password').val();
+            const password = $('#password').val().trim();
 
-            // Clear previous messages
-            hideMessages();
-
-            // Validate inputs
+            // Input validation
             if (!username || !password) {
-                showError('Please enter both username and password');
+                showAlert('Both fields are required.', 'error');
                 return;
             }
 
-            // Show loading state
-            showLoading(true);
+            // Show loading overlay and disable login button
+            $('.loading-overlay').css('display', 'flex');
+            $('.btn-login').prop('disabled', true);
 
-            // Simulate API call delay
-            setTimeout(function() {
-                // Check credentials
-                if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-                    showSuccess('Login successful! Redirecting to dashboard...');
+            // AJAX login request sending form data
+            $.ajax({
+                url: '/api/users/login',
+                method: 'POST',
+                data: {
+                    username: username,
+                    password: password
+                },
+                success: function (response) {
+                    if (response.redirectUrl) {
+                        // Successful login
+                        showAlert('Login successful!', 'success');
 
-                    // Simulate redirect to dashboard after 2 seconds
-                    setTimeout(function() {
-                        // For now, just show an alert since we don't have the dashboard yet
-                        alert('Redirecting to Admin Dashboard...\n\nThis is where you would navigate to the main dashboard page.');
+                        // Redirect to appropriate dashboard after a short delay
+                        setTimeout(() => {
+                            window.location.href = response.redirectUrl;
+                        }, 1000);
+                    } else {
+                        // Unexpected response
+                        showAlert('Invalid username or password. Please try again.', 'error');
+                        $('.loading-overlay').hide();
+                        $('.btn-login').prop('disabled', false);
+                    }
+                },
+                error: function (xhr) {
+                    // Handle authentication failure
+                    $('.loading-overlay').hide();
+                    $('.btn-login').prop('disabled', false);
 
-                        // In your actual implementation, you would redirect like this:
-                        // window.location.href = '/dashboard.html';
-                        // or
-                        // window.location.href = '/admin/dashboard';
-
-                        showLoading(false);
-                    }, 2000);
-                } else {
-                    showError('Invalid username or password. Please try again.');
-                    showLoading(false);
+                    if (xhr.status === 401) {
+                        showAlert('Invalid username or password. Please try again.', 'error');
+                    } else {
+                        showAlert('An error occurred. Please try again later.', 'error');
+                    }
+                    console.error('Login error:', xhr.responseText);
                 }
-            }, 1000); // Simulate network delay
+            });
         });
-    });
 
-    function showLoading(show) {
-        if (show) {
-            $('.loading').show();
-            $('.login-text').hide();
-            $('.login-btn').prop('disabled', true);
-        } else {
-            $('.loading').hide();
-            $('.login-text').show();
-            $('.login-btn').prop('disabled', false);
+        const modal = $('#resetPasswordModal');
+        const step1 = $('#step1');
+        const step2 = $('#step2');
+
+        // Show modal when clicking "Forgot password?"
+        $('.forgot-password a').click(function (e) {
+            e.preventDefault();
+            modal.show();
+        });
+
+        // Close modal when clicking X
+        $('.close').click(function () {
+            modal.hide();
+            resetForm();
+        });
+
+        // Close modal when clicking outside
+        $(window).click(function (e) {
+            if ($(e.target).is(modal)) {
+                modal.hide();
+                resetForm();
+            }
+        });
+
+        // Handle verification step
+        $('.btn-verify').click(function () {
+            const username = $('#resetUsername').val().trim();
+            const idNumber = $('#resetIdNumber').val().trim();
+
+            if (!username || !idNumber) {
+                showAlert('Please fill in all fields', 'error');
+                return;
+            }
+
+            $.ajax({
+                url: '/api/users/verify-reset',
+                method: 'POST',
+                data: {username, idNumber},
+                success: function (response) {
+                    if (response.valid) {
+                        step1.hide();
+                        step2.show();
+                    }
+                },
+                error: function () {
+                    showAlert('Invalid credentials. Please try again.', 'error');
+                }
+            });
+        });
+
+        // Handle password reset
+        $('.btn-reset').click(function () {
+            const username = $('#resetUsername').val().trim();
+            const idNumber = $('#resetIdNumber').val().trim();
+            const newPassword = $('#newPassword').val();
+            const confirmPassword = $('#confirmPassword').val();
+
+            if (!newPassword || !confirmPassword) {
+                showAlert('Please fill in all fields', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showAlert('Password must be at least 6 characters long', 'error');
+                return;
+            }
+
+            $.ajax({
+                url: '/api/users/reset-password',
+                method: 'POST',
+                data: {
+                    username,
+                    idNumber,
+                    newPassword
+                },
+                success: function () {
+                    showAlert('Password reset successful! Please login with your new password.', 'success');
+                    modal.hide();
+                    resetForm();
+                },
+                error: function () {
+                    showAlert('An error occurred. Please try again.', 'error');
+                }
+            });
+        });
+
+        function resetForm() {
+            $('#resetUsername, #resetIdNumber, #newPassword, #confirmPassword').val('');
+            step1.show();
+            step2.hide();
         }
-    }
-
-    function showError(message) {
-        $('#errorMessage').text(message).show();
-        $('#successMessage').hide();
-    }
-
-    function showSuccess(message) {
-        $('#successMessage').text(message).show();
-        $('#errorMessage').hide();
-    }
-
-    function hideMessages() {
-        $('#errorMessage, #successMessage').hide();
-    }
-
-    // Clear messages when user starts typing
-    $('#username, #password').on('input', function() {
-        hideMessages();
     });
 </script>
 </body>

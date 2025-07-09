@@ -16,8 +16,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {"healthRecords", "educationRecords"})
-@EqualsAndHashCode(exclude = {"healthRecords", "educationRecords"})
 public class Child {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,13 +40,6 @@ public class Child {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ChildStatus status = ChildStatus.ACTIVE;
-
-    // One-to-Many relationships
-    @OneToMany(mappedBy = "child", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<HealthRecord> healthRecords;
-
-    @OneToMany(mappedBy = "child", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<EducationRecord> educationRecords;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
