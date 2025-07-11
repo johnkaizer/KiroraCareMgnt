@@ -576,7 +576,7 @@
 
 <script>
     // API Configuration
-    const API_BASE_URL = '/api/health-records';
+    const HEALTH_API_BASE_URL = '/api/health-records';
     const CHILDREN_API_URL = '/api/children';
 
     // Global variables
@@ -649,7 +649,7 @@
 
                 children.forEach(child => {
                     $.ajax({
-                        url: API_BASE_URL + '/child/' + child.id,
+                        url: HEALTH_API_BASE_URL + '/child/' + child.id,
                         method: 'GET',
                         success: function(records) {
                             allRecords = allRecords.concat(records);
@@ -822,7 +822,7 @@
     // View upcoming appointments
     function viewUpcomingAppointments() {
         $.ajax({
-            url: API_BASE_URL + '/upcoming-appointments',
+            url: HEALTH_API_BASE_URL + '/upcoming-appointments',
             method: 'GET',
             success: function(appointments) {
                 displayUpcomingAppointments(appointments);
@@ -919,7 +919,7 @@
             return;
         }
 
-        const url = editingRecordId ? API_BASE_URL + '/' + editingRecordId : API_BASE_URL;
+        const url = editingRecordId ? HEALTH_API_BASE_URL + '/' + editingRecordId : HEALTH_API_BASE_URL;
         const method = editingRecordId ? 'PUT' : 'POST';
 
         $.ajax({
@@ -943,7 +943,7 @@
     function deleteHealthRecord(recordId) {
         if (confirm('Are you sure you want to delete this health record? This action cannot be undone.')) {
             $.ajax({
-                url: API_BASE_URL + '/' + recordId,
+                url: HEALTH_API_BASE_URL + '/' + recordId,
                 method: 'DELETE',
                 success: function() {
                     showSuccess('Health record deleted successfully');

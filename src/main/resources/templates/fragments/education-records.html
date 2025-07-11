@@ -561,7 +561,7 @@
 
 <script>
     // API Configuration
-    const API_BASE_URL = '/api/education-records';
+    const EDU_API_BASE_URL = '/api/education-records';
     const CHILDREN_API_URL = '/api/children';
 
     // Global variables
@@ -633,7 +633,7 @@
 
                 children.forEach(child => {
                     $.ajax({
-                        url: API_BASE_URL + '/child/' + child.id,
+                        url: EDU_API_BASE_URL + '/child/' + child.id,
                         method: 'GET',
                         success: function(records) {
                             allRecords = allRecords.concat(records);
@@ -736,7 +736,7 @@
         }
 
         $.ajax({
-            url: API_BASE_URL + '/search',
+            url: EDU_API_BASE_URL + '/search',
             method: 'GET',
             data: { schoolName: searchTerm },
             success: function(data) {
@@ -816,7 +816,7 @@
             return;
         }
 
-        const url = editingRecordId ? API_BASE_URL + '/' + editingRecordId : API_BASE_URL;
+        const url = editingRecordId ? EDU_API_BASE_URL + '/' + editingRecordId : EDU_API_BASE_URL;
         const method = editingRecordId ? 'PUT' : 'POST';
 
         $.ajax({
@@ -840,7 +840,7 @@
     function deleteRecord(recordId) {
         if (confirm('Are you sure you want to delete this education record? This action cannot be undone.')) {
             $.ajax({
-                url: API_BASE_URL + '/' + recordId,
+                url: EDU_API_BASE_URL + '/' + recordId,
                 method: 'DELETE',
                 success: function() {
                     showSuccess('Record deleted successfully');

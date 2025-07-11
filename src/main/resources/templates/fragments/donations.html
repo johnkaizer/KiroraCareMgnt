@@ -578,383 +578,388 @@
 
 <script>
     // API Configuration
-    const API_BASE_URL = '/api/donations';
+    // Donation Management Module - Encapsulated to avoid global pollution
+    const DonationManager = (function() {
+        'use strict';
 
-    // Global variables
-    let currentChildren = [];
-    let editingChildId = null;
+        // Private variables (formerly global)
+        const API_BASE_URL = '/api/donations';
+        let currentChildren = [];
+        let editingChildId = null;
 
-    // Initialize the application
-    $(document).ready(function() {
-        loadChildren();
-        loadStatistics();
+        // Private utility functions
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
 
-        // Set up search input listener
-        $('#searchInput').on('input', function() {
-            if ($(this).val().length === 0) {
-                loadChildren();
-            }
-        });
-
-        // Set up status filter listener
-        $('#statusFilter').on('change', function() {
-            filterChildren();
-        });
-
-        // Set up type change listener for dynamic form
-        $('#gender').on('change', function() {
-            toggleAmountFields();
-        });
-    });
-
-    // Toggle amount fields based on donation type
-    function toggleAmountFields() {
-        const type = $('#gender').val();
-        const monetaryField = $('#status').closest('.form-group');
-        const quantityField = $('#quantity').closest('.form-group');
-
-        if (type === 'MONETARY') {
-            monetaryField.show();
-            quantityField.hide();
-            $('#status').attr('required', true);
-            $('#quantity').attr('required', false);
-        } else if (type && type !== 'MONETARY') {
-            monetaryField.hide();
-            quantityField.show();
-            $('#status').attr('required', false);
-            $('#quantity').attr('required', true);
-        } else {
-            monetaryField.show();
-            quantityField.show();
-            $('#status').attr('required', false);
-            $('#quantity').attr('required', false);
-        }
-    }
-
-    // Load all donations
-    function loadChildren() {
-        $.ajax({
-            url: API_BASE_URL,
-            method: 'GET',
-            success: function(data) {
-                currentChildren = data;
-                displayChildren(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading donations:', error);
-                showError('Failed to load donations data');
-                displayEmptyState();
-            }
-        });
-    }
-
-    // Load statistics
-    function loadStatistics() {
-        // Load total donations count
-        $.ajax({
-            url: API_BASE_URL,
-            method: 'GET',
-            success: function(data) {
-                $('#totalChildren').text(data.length);
-
-                // Calculate total monetary amount
-                const totalMonetary = data
-                    .filter(donation => donation.type === 'MONETARY' && donation.monetaryAmount)
-                    .reduce((sum, donation) => sum + donation.monetaryAmount, 0);
-                $('#activeChildren').text('$' + totalMonetary.toLocaleString());
-
-                // Calculate this month's donations
-                const thisMonth = new Date().getMonth();
-                const thisYear = new Date().getFullYear();
-                const thisMonthCount = data.filter(donation => {
-                    const donationDate = new Date(donation.donationDate);
-                    return donationDate.getMonth() === thisMonth && donationDate.getFullYear() === thisYear;
-                }).length;
-                $('#graduatedChildren').text(thisMonthCount);
-            }
-        });
-    }
-
-    // Display donations in table
-    function displayChildren(donations) {
-        const tableContent = $('#childrenTableContent');
-
-        if (donations.length === 0) {
-            displayEmptyState();
-            return;
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
         }
 
-        let html = '';
-        donations.forEach(donation => {
-            const statusClass = 'status-' + donation.type.toLowerCase();
-            const amountDisplay = donation.type === 'MONETARY'
-                ? '$' + (donation.monetaryAmount || 0).toLocaleString()
-                : (donation.quantity || 0) + ' items';
-
-            html += `
-                    <div class="child-row">
-                        <div class="child-name">${donation.donorName}</div>
-                        <div class="child-age">${donation.donorEmail || donation.donorPhone || 'N/A'}</div>
-                        <div><span class="status-badge ${statusClass}">${donation.type}</span></div>
-                        <div>${amountDisplay}</div>
-                        <div>${formatDate(donation.donationDate)}</div>
-                        <div>${donation.description || 'N/A'}</div>
-                        <div class="actions">
-                            <button class="btn-sm btn-edit" onclick="editChild(${donation.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn-sm btn-delete" onclick="deleteChild(${donation.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-        });
-
-        tableContent.html(html);
-    }
-
-    // Display empty state
-    function displayEmptyState() {
-        const tableContent = $('#childrenTableContent');
-        tableContent.html(`
-                <div class="empty-state">
-                    <i class="fas fa-hand-holding-heart"></i>
-                    <h3>No donations found</h3>
-                    <p>Start by adding a new donation to the system</p>
-                </div>
-            `);
-    }
-
-    // Search donations
-    function searchChildren() {
-        const searchTerm = $('#searchInput').val().trim();
-
-        if (searchTerm === '') {
-            loadChildren();
-            return;
+        function showSuccess(message) {
+            const alertDiv = $('<div class="alert alert-success">' + message + '</div>');
+            $('.container').prepend(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
         }
 
-        $.ajax({
-            url: API_BASE_URL + '/search',
-            method: 'GET',
-            data: { term: searchTerm },
-            success: function(data) {
-                currentChildren = data;
-                displayChildren(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error searching donations:', error);
-                showError('Failed to search donations');
-            }
-        });
-    }
-
-    // Filter donations by type
-    function filterChildren() {
-        const type = $('#statusFilter').val();
-
-        if (type === '') {
-            loadChildren();
-            return;
+        function showError(message) {
+            const alertDiv = $('<div class="alert alert-error">' + message + '</div>');
+            $('.container').prepend(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
         }
 
-        $.ajax({
-            url: API_BASE_URL + '/type/' + type,
-            method: 'GET',
-            success: function(data) {
-                currentChildren = data;
-                displayChildren(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error filtering donations:', error);
-                showError('Failed to filter donations');
-            }
-        });
-    }
+        function convertToCSV(data) {
+            const headers = ['ID', 'Donor Name', 'Donor Email', 'Donor Phone', 'Type', 'Monetary Amount', 'Quantity', 'Description', 'Donation Date', 'Notes'];
+            let csv = headers.join(',') + '\n';
 
-    // Open add modal
-    function openAddModal() {
-        editingChildId = null;
-        $('#modalTitle').text('Add New Donation');
-        $('#childForm')[0].reset();
-        $('#childModal').show();
-        toggleAmountFields();
-    }
+            data.forEach(donation => {
+                const row = [
+                    donation.id,
+                    '"' + donation.donorName + '"',
+                    '"' + (donation.donorEmail || '') + '"',
+                    '"' + (donation.donorPhone || '') + '"',
+                    donation.type,
+                    donation.monetaryAmount || 0,
+                    donation.quantity || 0,
+                    '"' + (donation.description || '') + '"',
+                    donation.donationDate || '',
+                    '"' + (donation.notes || '').replace(/"/g, '""') + '"'
+                ];
+                csv += row.join(',') + '\n';
+            });
 
-    // Edit donation
-    function editChild(donationId) {
-        editingChildId = donationId;
-        $('#modalTitle').text('Edit Donation');
-
-        const donation = currentChildren.find(d => d.id === donationId);
-        if (donation) {
-            $('#firstName').val(donation.donorName);
-            $('#lastName').val(donation.donorEmail);
-            $('#dateOfBirth').val(donation.donorPhone);
-            $('#gender').val(donation.type);
-            $('#admissionDate').val(donation.donationDate);
-            $('#status').val(donation.monetaryAmount);
-            $('#quantity').val(donation.quantity);
-            $('#description').val(donation.description);
-            $('#backgroundStory').val(donation.notes);
-            toggleAmountFields();
+            return csv;
         }
 
-        $('#childModal').show();
-    }
-
-    // Save donation
-    function saveChild() {
-        const formData = {
-            donorName: $('#firstName').val().trim(),
-            donorEmail: $('#lastName').val().trim(),
-            donorPhone: $('#dateOfBirth').val().trim(),
-            type: $('#gender').val(),
-            donationDate: $('#admissionDate').val() || null,
-            monetaryAmount: $('#status').val() ? parseFloat($('#status').val()) : null,
-            quantity: $('#quantity').val() ? parseInt($('#quantity').val()) : null,
-            description: $('#description').val().trim(),
-            notes: $('#backgroundStory').val().trim()
-        };
-
-        // Validation
-        if (!formData.donorName || !formData.type) {
-            showError('Donor name and donation type are required');
-            return;
-        }
-
-        if (formData.type === 'MONETARY' && !formData.monetaryAmount) {
-            showError('Monetary amount is required for monetary donations');
-            return;
-        }
-
-        if (formData.type !== 'MONETARY' && !formData.quantity) {
-            showError('Quantity is required for non-monetary donations');
-            return;
-        }
-
-        const url = editingChildId ? API_BASE_URL + '/' + editingChildId : API_BASE_URL;
-        const method = editingChildId ? 'PUT' : 'POST';
-
-        $.ajax({
-            url: url,
-            method: method,
-            contentType: 'application/json',
-            data: JSON.stringify(formData),
-            success: function(data) {
-                showSuccess(editingChildId ? 'Donation updated successfully' : 'Donation added successfully');
-                closeModal();
-                loadChildren();
-                loadStatistics();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error saving donation:', error);
-                showError('Failed to save donation');
-            }
-        });
-    }
-
-    // Delete donation
-    function deleteChild(donationId) {
-        if (confirm('Are you sure you want to delete this donation? This action cannot be undone.')) {
+        // Private core functions
+        function loadChildren() {
             $.ajax({
-                url: API_BASE_URL + '/' + donationId,
-                method: 'DELETE',
-                success: function() {
-                    showSuccess('Donation deleted successfully');
+                url: API_BASE_URL,
+                method: 'GET',
+                success: function(data) {
+                    currentChildren = data;
+                    displayChildren(data);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading donations:', error);
+                    showError('Failed to load donations data');
+                    displayEmptyState();
+                }
+            });
+        }
+
+        function loadStatistics() {
+            $.ajax({
+                url: API_BASE_URL,
+                method: 'GET',
+                success: function(data) {
+                    $('#totalChildren').text(data.length);
+
+                    const totalMonetary = data
+                        .filter(donation => donation.type === 'MONETARY' && donation.monetaryAmount)
+                        .reduce((sum, donation) => sum + donation.monetaryAmount, 0);
+                    $('#activeChildren').text('$' + totalMonetary.toLocaleString());
+
+                    const thisMonth = new Date().getMonth();
+                    const thisYear = new Date().getFullYear();
+                    const thisMonthCount = data.filter(donation => {
+                        const donationDate = new Date(donation.donationDate);
+                        return donationDate.getMonth() === thisMonth && donationDate.getFullYear() === thisYear;
+                    }).length;
+                    $('#graduatedChildren').text(thisMonthCount);
+                }
+            });
+        }
+
+        function displayChildren(donations) {
+            const tableContent = $('#childrenTableContent');
+
+            if (donations.length === 0) {
+                displayEmptyState();
+                return;
+            }
+
+            let html = '';
+            donations.forEach(donation => {
+                const statusClass = 'status-' + donation.type.toLowerCase();
+                const amountDisplay = donation.type === 'MONETARY'
+                    ? '$' + (donation.monetaryAmount || 0).toLocaleString()
+                    : (donation.quantity || 0) + ' items';
+
+                html += `
+                <div class="child-row">
+                    <div class="child-name">${donation.donorName}</div>
+                    <div class="child-age">${donation.donorEmail || donation.donorPhone || 'N/A'}</div>
+                    <div><span class="status-badge ${statusClass}">${donation.type}</span></div>
+                    <div>${amountDisplay}</div>
+                    <div>${formatDate(donation.donationDate)}</div>
+                    <div>${donation.description || 'N/A'}</div>
+                    <div class="actions">
+                        <button class="btn-sm btn-edit" onclick="DonationManager.editChild(${donation.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-sm btn-delete" onclick="DonationManager.deleteChild(${donation.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            });
+
+            tableContent.html(html);
+        }
+
+        function displayEmptyState() {
+            const tableContent = $('#childrenTableContent');
+            tableContent.html(`
+            <div class="empty-state">
+                <i class="fas fa-hand-holding-heart"></i>
+                <h3>No donations found</h3>
+                <p>Start by adding a new donation to the system</p>
+            </div>
+        `);
+        }
+
+        function searchChildren() {
+            const searchTerm = $('#searchInput').val().trim();
+
+            if (searchTerm === '') {
+                loadChildren();
+                return;
+            }
+
+            $.ajax({
+                url: API_BASE_URL + '/search',
+                method: 'GET',
+                data: { term: searchTerm },
+                success: function(data) {
+                    currentChildren = data;
+                    displayChildren(data);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error searching donations:', error);
+                    showError('Failed to search donations');
+                }
+            });
+        }
+
+        function filterChildren() {
+            const type = $('#statusFilter').val();
+
+            if (type === '') {
+                loadChildren();
+                return;
+            }
+
+            $.ajax({
+                url: API_BASE_URL + '/type/' + type,
+                method: 'GET',
+                success: function(data) {
+                    currentChildren = data;
+                    displayChildren(data);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error filtering donations:', error);
+                    showError('Failed to filter donations');
+                }
+            });
+        }
+
+        function toggleAmountFields() {
+            const type = $('#gender').val();
+            const monetaryField = $('#status').closest('.form-group');
+            const quantityField = $('#quantity').closest('.form-group');
+
+            if (type === 'MONETARY') {
+                monetaryField.show();
+                quantityField.hide();
+                $('#status').attr('required', true);
+                $('#quantity').attr('required', false);
+            } else if (type && type !== 'MONETARY') {
+                monetaryField.hide();
+                quantityField.show();
+                $('#status').attr('required', false);
+                $('#quantity').attr('required', true);
+            } else {
+                monetaryField.show();
+                quantityField.show();
+                $('#status').attr('required', false);
+                $('#quantity').attr('required', false);
+            }
+        }
+
+        function openAddModal() {
+            editingChildId = null;
+            $('#modalTitle').text('Add New Donation');
+            $('#childForm')[0].reset();
+            $('#childModal').show();
+            toggleAmountFields();
+        }
+
+        function editChild(donationId) {
+            editingChildId = donationId;
+            $('#modalTitle').text('Edit Donation');
+
+            const donation = currentChildren.find(d => d.id === donationId);
+            if (donation) {
+                $('#firstName').val(donation.donorName);
+                $('#lastName').val(donation.donorEmail);
+                $('#dateOfBirth').val(donation.donorPhone);
+                $('#gender').val(donation.type);
+                $('#admissionDate').val(donation.donationDate);
+                $('#status').val(donation.monetaryAmount);
+                $('#quantity').val(donation.quantity);
+                $('#description').val(donation.description);
+                $('#backgroundStory').val(donation.notes);
+                toggleAmountFields();
+            }
+
+            $('#childModal').show();
+        }
+
+        function saveChild() {
+            const formData = {
+                donorName: $('#firstName').val().trim(),
+                donorEmail: $('#lastName').val().trim(),
+                donorPhone: $('#dateOfBirth').val().trim(),
+                type: $('#gender').val(),
+                donationDate: $('#admissionDate').val() || null,
+                monetaryAmount: $('#status').val() ? parseFloat($('#status').val()) : null,
+                quantity: $('#quantity').val() ? parseInt($('#quantity').val()) : null,
+                description: $('#description').val().trim(),
+                notes: $('#backgroundStory').val().trim()
+            };
+
+            // Validation
+            if (!formData.donorName || !formData.type) {
+                showError('Donor name and donation type are required');
+                return;
+            }
+
+            if (formData.type === 'MONETARY' && !formData.monetaryAmount) {
+                showError('Monetary amount is required for monetary donations');
+                return;
+            }
+
+            if (formData.type !== 'MONETARY' && !formData.quantity) {
+                showError('Quantity is required for non-monetary donations');
+                return;
+            }
+
+            const url = editingChildId ? API_BASE_URL + '/' + editingChildId : API_BASE_URL;
+            const method = editingChildId ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url,
+                method: method,
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(data) {
+                    showSuccess(editingChildId ? 'Donation updated successfully' : 'Donation added successfully');
+                    closeModal();
                     loadChildren();
                     loadStatistics();
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error deleting donation:', error);
-                    showError('Failed to delete donation');
+                    console.error('Error saving donation:', error);
+                    showError('Failed to save donation');
                 }
             });
         }
-    }
 
-    // Close modal
-    function closeModal() {
-        $('#childModal').hide();
-        editingChildId = null;
-    }
-
-    // Export data
-    function exportData() {
-        if (currentChildren.length === 0) {
-            showError('No data to export');
-            return;
+        function deleteChild(donationId) {
+            if (confirm('Are you sure you want to delete this donation? This action cannot be undone.')) {
+                $.ajax({
+                    url: API_BASE_URL + '/' + donationId,
+                    method: 'DELETE',
+                    success: function() {
+                        showSuccess('Donation deleted successfully');
+                        loadChildren();
+                        loadStatistics();
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error deleting donation:', error);
+                        showError('Failed to delete donation');
+                    }
+                });
+            }
         }
 
-        const csvContent = convertToCSV(currentChildren);
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'donations_data.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        showSuccess('Data exported successfully');
-    }
-
-    // Convert data to CSV
-    function convertToCSV(data) {
-        const headers = ['ID', 'Donor Name', 'Donor Email', 'Donor Phone', 'Type', 'Monetary Amount', 'Quantity', 'Description', 'Donation Date', 'Notes'];
-        let csv = headers.join(',') + '\n';
-
-        data.forEach(donation => {
-            const row = [
-                donation.id,
-                '"' + donation.donorName + '"',
-                '"' + (donation.donorEmail || '') + '"',
-                '"' + (donation.donorPhone || '') + '"',
-                donation.type,
-                donation.monetaryAmount || 0,
-                donation.quantity || 0,
-                '"' + (donation.description || '') + '"',
-                donation.donationDate || '',
-                '"' + (donation.notes || '').replace(/"/g, '""') + '"'
-            ];
-            csv += row.join(',') + '\n';
-        });
-
-        return csv;
-    }
-
-    // Utility functions
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    }
-
-    function showSuccess(message) {
-        const alertDiv = $('<div class="alert alert-success">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    function showError(message) {
-        const alertDiv = $('<div class="alert alert-error">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    // Close modal when clicking outside
-    $(window).click(function(event) {
-        if (event.target.id === 'childModal') {
-            closeModal();
+        function closeModal() {
+            $('#childModal').hide();
+            editingChildId = null;
         }
+
+        function exportData() {
+            if (currentChildren.length === 0) {
+                showError('No data to export');
+                return;
+            }
+
+            const csvContent = convertToCSV(currentChildren);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'donations_data.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('Data exported successfully');
+        }
+
+        // Initialize function
+        function init() {
+            loadChildren();
+            loadStatistics();
+
+            // Set up search input listener
+            $('#searchInput').on('input', function() {
+                if ($(this).val().length === 0) {
+                    loadChildren();
+                }
+            });
+
+            // Set up status filter listener
+            $('#statusFilter').on('change', function() {
+                filterChildren();
+            });
+
+            // Set up type change listener for dynamic form
+            $('#gender').on('change', function() {
+                toggleAmountFields();
+            });
+
+            // Close modal when clicking outside
+            $(window).click(function(event) {
+                if (event.target.id === 'childModal') {
+                    closeModal();
+                }
+            });
+        }
+
+        // Public API - only expose functions that need to be called from HTML
+        return {
+            init: init,
+            openAddModal: openAddModal,
+            closeModal: closeModal,
+            saveChild: saveChild,
+            editChild: editChild,
+            deleteChild: deleteChild,
+            searchChildren: searchChildren,
+            exportData: exportData
+        };
+    })();
+
+    // Initialize when document is ready
+    $(document).ready(function() {
+        DonationManager.init();
     });
 </script>
 </body>
