@@ -484,22 +484,21 @@
 
     <!-- Controls -->
     <div class="controls">
-        <button class="btn btn-primary" onclick="openAddModal()">
+        <button class="btn btn-primary" id="addUserBtn">
             <i class="fas fa-plus"></i> Add User
         </button>
-        <button class="btn btn-secondary" onclick="exportData()">
+        <button class="btn btn-secondary" id="exportBtn">
             <i class="fas fa-download"></i> Export
         </button>
         <div class="search-container">
             <input type="text" class="search-input" id="searchInput" placeholder="Search users...">
             <select class="filter-select" id="roleFilter">
                 <option value="">All Roles</option>
-                <option value="ADMIN">Admin</option>
                 <option value="CHILDREN_REPS">Children Representatives</option>
                 <option value="VOLUNTEERS">Volunteers</option>
                 <option value="DOCTORS">Doctors</option>
             </select>
-            <button class="btn btn-primary" onclick="searchUsers()">
+            <button class="btn btn-primary" id="searchBtn">
                 <i class="fas fa-search"></i> Search
             </button>
         </div>
@@ -510,10 +509,6 @@
         <div class="stat-card">
             <h3 id="totalUsers">0</h3>
             <p>Total Users</p>
-        </div>
-        <div class="stat-card">
-            <h3 id="adminUsers">0</h3>
-            <p>Admins</p>
         </div>
         <div class="stat-card">
             <h3 id="childrenRepsUsers">0</h3>
@@ -556,10 +551,11 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2 id="modalTitle">Add New User</h2>
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" id="closeModal">&times;</span>
         </div>
         <div class="modal-body">
             <form id="userForm">
+                <input type="hidden" id="userId" value="">
                 <div class="form-group">
                     <label for="fullName">Full Name *</label>
                     <input type="text" id="fullName" name="fullName" required>
@@ -591,7 +587,6 @@
                     <label for="role">Role *</label>
                     <select id="role" name="role" required>
                         <option value="">Select Role</option>
-                        <option value="ADMIN">Admin</option>
                         <option value="CHILDREN_REPS">Children Representative</option>
                         <option value="VOLUNTEERS">Volunteer</option>
                         <option value="DOCTORS">Doctor</option>
@@ -612,199 +607,374 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-success" onclick="saveUser()">
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="btn btn-success" id="saveBtn">
                 <i class="fas fa-save"></i> Save
             </button>
         </div>
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Confirm Delete</h2>
+            <button class="close" id="closeDeleteModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this user? This action cannot be undone.</p>
+            <p><strong id="deleteUserName"></strong></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                <i class="fas fa-trash"></i>
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // API Configuration
-    const API_BASE_URL = '/api/users';
-
-    // Global variables
-    let currentUsers = [];
-    let editingUserId = null;
-
-    // Initialize the application
     $(document).ready(function() {
-        loadUsers();
-        loadStatistics();
+        // Global variables
+        let currentUserId = null;
+        let isEditing = false;
+        let currentUsers = [];
 
-        // Set up search input listener
-        $('#searchInput').on('input', function() {
-            if ($(this).val().length === 0) {
-                loadUsers();
-            }
-        });
+        // Initialize the page
+        init();
 
-        // Set up role filter listener
-        $('#roleFilter').on('change', function() {
-            filterUsers();
-        });
-    });
+        function init() {
+            loadUsers();
+            loadStatistics();
+            bindEvents();
+        }
 
-    // Load all users
-    function loadUsers() {
-        $.ajax({
-            url: API_BASE_URL,
-            method: 'GET',
-            success: function(data) {
-                currentUsers = data;
-                displayUsers(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading users:', error);
-                showError('Failed to load users data');
-                displayEmptyState();
-            }
-        });
-    }
+        function bindEvents() {
+            // Add user button
+            $('#addUserBtn').click(function() {
+                openModal('add');
+            });
 
-    // Load statistics
-    function loadStatistics() {
-        // Load total users count
-        $.ajax({
-            url: API_BASE_URL + '/count',
-            method: 'GET',
-            success: function(count) {
-                $('#totalUsers').text(count);
-            }
-        });
+            // Export button
+            $('#exportBtn').click(function() {
+                exportData();
+            });
 
-        // Load role-specific counts
-        const roles = ['ADMIN', 'CHILDREN_REPS', 'VOLUNTEERS', 'DOCTORS'];
-        const elements = ['adminUsers', 'childrenRepsUsers', 'volunteerUsers', 'doctorUsers'];
+            // Modal close events
+            $('#closeModal, #cancelBtn').click(function() {
+                closeModal();
+            });
 
-        roles.forEach((role, index) => {
-            $.ajax({
-                url: API_BASE_URL + '/count/role/' + role,
-                method: 'GET',
-                success: function(count) {
-                    $('#' + elements[index]).text(count);
+            $('#closeDeleteModal, #cancelDeleteBtn').click(function() {
+                closeDeleteModal();
+            });
+
+            // Form submission
+            $('#userForm').submit(function(e) {
+                e.preventDefault();
+                saveUser();
+            });
+
+            // Save button click
+            $('#saveBtn').click(function(e) {
+                e.preventDefault();
+                saveUser();
+            });
+
+            // Search functionality
+            $('#searchInput').on('input', function() {
+                const searchTerm = $(this).val().toLowerCase();
+                if (searchTerm === '') {
+                    displayUsers(currentUsers);
+                } else {
+                    filterUsers();
                 }
             });
-        });
-    }
 
-    // Display users in table
-    function displayUsers(users) {
-        const tableContent = $('#usersTableContent');
+            // Search button
+            $('#searchBtn').click(function() {
+                filterUsers();
+            });
 
-        if (users.length === 0) {
-            displayEmptyState();
-            return;
+            // Role filter
+            $('#roleFilter').change(function() {
+                filterUsers();
+            });
+
+            // Delete confirmation
+            $('#confirmDeleteBtn').click(function() {
+                deleteUserConfirmed(currentUserId);
+            });
+
+            // Close modal when clicking outside
+            $('.modal').click(function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+
+            $('.close').click(closeModal);
+
+            // Handle form submission with Enter key
+            $('#userForm').keydown(function(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    saveUser();
+                }
+            });
+
+            // Close modal with Escape key
+            $(document).keydown(function(event) {
+                if (event.key === 'Escape') {
+                    closeModal();
+                    closeDeleteModal();
+                }
+            });
         }
 
-        let html = '';
-        users.forEach(user => {
-            const roleClass = 'role-' + user.role.toLowerCase();
-            const avatarSrc = user.image ? `/api/users/user-image/${user.image}` : '';
-            const initials = user.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+        function loadUsers() {
+            showLoading(true);
 
-            html += `
-                <div class="user-row">
-                    <div class="user-avatar">
-                        ${avatarSrc ? `<img src="${avatarSrc}" alt="${user.fullName}">` : initials}
-                    </div>
-                    <div>
-                        <div class="user-name">${user.fullName}</div>
-                        <div class="user-username">@${user.username}</div>
-                    </div>
-                    <div>${user.username}</div>
-                    <div>${user.idNumber}</div>
-                    <div>${user.phoneNumber || 'N/A'}</div>
-                    <div><span class="role-badge ${roleClass}">${formatRole(user.role)}</span></div>
-                    <div class="actions">
-                        <button class="btn-sm btn-edit" onclick="editUser(${user.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-sm btn-delete" onclick="deleteUser(${user.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-
-        tableContent.html(html);
-    }
-
-    // Display empty state
-    function displayEmptyState() {
-        const tableContent = $('#usersTableContent');
-        tableContent.html(`
-            <div class="empty-state">
-                <i class="fas fa-users"></i>
-                <h3>No users found</h3>
-                <p>Start by adding a new user to the system</p>
-            </div>
-        `);
-    }
-
-    // Search users
-    function searchUsers() {
-        const searchTerm = $('#searchInput').val().trim().toLowerCase();
-
-        if (searchTerm === '') {
-            loadUsers();
-            return;
+            $.ajax({
+                url: '/api/users',
+                method: 'GET',
+                success: function(users) {
+                    currentUsers = users;
+                    displayUsers(users);
+                    showLoading(false);
+                },
+                error: function(xhr) {
+                    showAlert('Error loading users: ' + xhr.responseText, 'error');
+                    showLoading(false);
+                    displayEmptyState();
+                }
+            });
         }
 
-        const filteredUsers = currentUsers.filter(user =>
-            user.fullName.toLowerCase().includes(searchTerm) ||
-            user.username.toLowerCase().includes(searchTerm) ||
-            user.idNumber.toLowerCase().includes(searchTerm) ||
-            (user.phoneNumber && user.phoneNumber.toLowerCase().includes(searchTerm))
-        );
+        function loadStatistics() {
+            // Load total users count
+            $.ajax({
+                url: '/api/users/count',
+                method: 'GET',
+                success: function(count) {
+                    $('#totalUsers').text(count);
+                }
+            });
 
-        displayUsers(filteredUsers);
-    }
+            // Load role-specific counts
+            const roles = [ 'CHILDREN_REPS', 'VOLUNTEERS', 'DOCTORS'];
+            const elements = ['childrenRepsUsers', 'volunteerUsers', 'doctorUsers'];
 
-    // Filter users by role
-    function filterUsers() {
-        const role = $('#roleFilter').val();
-
-        if (role === '') {
-            loadUsers();
-            return;
+            roles.forEach((role, index) => {
+                $.ajax({
+                    url: `/api/users/count/role/${role}`,
+                    method: 'GET',
+                    success: function(count) {
+                        $('#' + elements[index]).text(count);
+                    }
+                });
+            });
         }
 
-        $.ajax({
-            url: API_BASE_URL + '/role/' + role.toLowerCase().replace('_', '-'),
-            method: 'GET',
-            success: function(data) {
-                currentUsers = data;
-                displayUsers(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error filtering users:', error);
-                showError('Failed to filter users');
+        function displayUsers(users) {
+            const tableContent = $('#usersTableContent');
+
+            if (users.length === 0) {
+                displayEmptyState();
+                return;
             }
-        });
-    }
 
-    // Open add modal
-    function openAddModal() {
-        editingUserId = null;
-        $('#modalTitle').text('Add New User');
-        $('#userForm')[0].reset();
-        $('#password').prop('required', true);
-        $('#imagePreview').hide();
-        $('#fileText').text('Choose image file');
-        $('#userModal').show();
-    }
+            let html = '';
+            users.forEach(user => {
+                const roleClass = 'role-' + user.role.toLowerCase();
+                const avatarSrc = user.image ? `/api/users/user-image/${user.image}` : '';
+                const initials = user.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
 
-    // Edit user
-    function editUser(userId) {
-        editingUserId = userId;
-        $('#modalTitle').text('Edit User');
-        $('#password').prop('required', false);
+                html += `
+                    <div class="user-row">
+                        <div class="user-avatar">
+                            ${avatarSrc ? `<img src="${avatarSrc}" alt="${user.fullName}">` : initials}
+                        </div>
+                        <div>
+                            <div class="user-name">${user.fullName}</div>
+                            <div class="user-username">@${user.username}</div>
+                        </div>
+                        <div>${user.username}</div>
+                        <div>${user.idNumber}</div>
+                        <div>${user.phoneNumber || 'N/A'}</div>
+                        <div><span class="role-badge ${roleClass}">${formatRole(user.role)}</span></div>
+                        <div class="actions">
+                            <button class="btn-sm btn-edit" onclick="editUser(${user.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-sm btn-delete" onclick="deleteUser(${user.id}, '${user.fullName}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
 
-        const user = currentUsers.find(u => u.id === userId);
-        if (user) {
+            tableContent.html(html);
+        }
+
+        function displayEmptyState() {
+            const tableContent = $('#usersTableContent');
+            tableContent.html(`
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>No users found</h3>
+                    <p>Start by adding a new user to the system</p>
+                </div>
+            `);
+        }
+
+        function filterUsers() {
+            const searchTerm = $('#searchInput').val().trim().toLowerCase();
+            const role = $('#roleFilter').val();
+
+            let filteredUsers = currentUsers;
+
+            if (searchTerm !== '') {
+                filteredUsers = filteredUsers.filter(user =>
+                    user.fullName.toLowerCase().includes(searchTerm) ||
+                    user.username.toLowerCase().includes(searchTerm) ||
+                    user.idNumber.toLowerCase().includes(searchTerm) ||
+                    (user.phoneNumber && user.phoneNumber.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            if (role !== '') {
+                filteredUsers = filteredUsers.filter(user => user.role === role);
+            }
+
+            displayUsers(filteredUsers);
+        }
+
+        function openModal(mode, userId = null) {
+            isEditing = mode === 'edit';
+
+            if (isEditing) {
+                $('#modalTitle').text('Edit User');
+                $('#password').prop('required', false);
+                $('#saveBtn').html('<i class="fas fa-save"></i> Update User');
+            } else {
+                $('#modalTitle').text('Add New User');
+                $('#userForm')[0].reset();
+                $('#userId').val('');
+                $('#password').prop('required', true);
+                $('#imagePreview').hide();
+                $('#fileText').text('Choose image file');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Save User');
+            }
+
+            $('#userModal').show();
+            $('#fullName').focus();
+        }
+
+        function closeModal() {
+            $('#userModal').hide();
+            $('#userForm')[0].reset();
+        }
+
+        function saveUser() {
+            const userId = $('#userId').val();
+
+            // Validate required fields
+            const fullName = $('#fullName').val().trim();
+            const username = $('#username').val().trim();
+            const idNumber = $('#idNumber').val().trim();
+            const role = $('#role').val();
+            const password = $('#password').val();
+
+            if (!fullName || !username || !idNumber || !role) {
+                showAlert('Full name, username, ID number, and role are required!', 'error');
+                return;
+            }
+
+            if (!userId && !password) {
+                showAlert('Password is required for new users!', 'error');
+                return;
+            }
+
+            // Create FormData object
+            const formData = new FormData();
+
+            // Create user object
+            const userData = {
+                fullName: fullName,
+                username: username,
+                idNumber: idNumber,
+                phoneNumber: $('#phoneNumber').val().trim(),
+                role: role
+            };
+
+            // Add password only if it's provided
+            if (password) {
+                userData.password = password;
+            }
+
+            // Add user data to form
+            formData.append('user', new Blob([JSON.stringify(userData)], {
+                type: 'application/json'
+            }));
+
+            // Add image if selected
+            const imageFile = $('#imageFile')[0].files[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            const url = userId ? `/api/users/${userId}` : '/api/users';
+            const method = userId ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url,
+                method: method,
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    loadUsers();
+                    loadStatistics();
+                    closeModal();
+                    const message = userId ? 'User updated successfully!' : 'User added successfully!';
+                    showAlert(message, 'success');
+                },
+                error: function(xhr) {
+                    const errorMessage = xhr.responseJSON?.message || 'Error saving user: ' + xhr.responseText;
+                    showAlert(errorMessage, 'error');
+                }
+            });
+        }
+
+        function editUser(id) {
+            // First try to find user in current data
+            const user = currentUsers.find(u => u.id === id);
+            if (user) {
+                populateForm(user);
+                openModal('edit', user.id);
+            } else {
+                // Fallback to API call if not found in current data
+                $.ajax({
+                    url: `/api/users/${id}`,
+                    method: 'GET',
+                    success: function(user) {
+                        populateForm(user);
+                        openModal('edit', user.id);
+                    },
+                    error: function(xhr) {
+                        showAlert('Error fetching user details: ' + xhr.responseText, 'error');
+                    }
+                });
+            }
+        }
+
+        function populateForm(user) {
+            $('#userId').val(user.id);
             $('#fullName').val(user.fullName);
             $('#username').val(user.username);
             $('#password').val(''); // Don't show current password
@@ -821,212 +991,143 @@
             }
         }
 
-        $('#userModal').show();
-    }
-
-    // Preview image
-    function previewImage() {
-        const file = $('#imageFile')[0].files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                $('#imagePreview').attr('src', e.target.result).show();
-            };
-            reader.readAsDataURL(file);
-            $('#fileText').text(file.name);
-        }
-    }
-
-    // Save user
-    function saveUser() {
-        const formData = new FormData();
-
-        // Create user object
-        const userData = {
-            fullName: $('#fullName').val().trim(),
-            username: $('#username').val().trim(),
-            idNumber: $('#idNumber').val().trim(),
-            phoneNumber: $('#phoneNumber').val().trim(),
-            role: $('#role').val()
-        };
-
-        // Add password only if it's provided (for edit) or required (for new)
-        const password = $('#password').val();
-        if (password || !editingUserId) {
-            userData.password = password;
+        function deleteUser(id, userName) {
+            currentUserId = id;
+            $('#deleteUserName').text(userName);
+            $('#deleteModal').show();
         }
 
-        // Validation
-        if (!userData.fullName || !userData.username || !userData.idNumber || !userData.role) {
-            showError('Full name, username, ID number, and role are required');
-            return;
+        function closeDeleteModal() {
+            $('#deleteModal').hide();
+            currentUserId = null;
         }
 
-        if (!editingUserId && !password) {
-            showError('Password is required for new users');
-            return;
-        }
-
-        // Add user data to form
-        formData.append('user', new Blob([JSON.stringify(userData)], {
-            type: 'application/json'
-        }));
-
-        // Add image if selected
-        const imageFile = $('#imageFile')[0].files[0];
-        if (imageFile) {
-            formData.append('image', imageFile);
-        }
-
-        const url = editingUserId ? API_BASE_URL + '/' + editingUserId : API_BASE_URL;
-        const method = editingUserId ? 'PUT' : 'POST';
-
-        $.ajax({
-            url: url,
-            method: method,
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(data) {
-                showSuccess(editingUserId ? 'User updated successfully' : 'User added successfully');
-                closeModal();
-                loadUsers();
-                loadStatistics();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error saving user:', error);
-                const errorMessage = xhr.responseJSON?.message || 'Failed to save user';
-                showError(errorMessage);
-            }
-        });
-    }
-
-    // Delete user
-    function deleteUser(userId) {
-        if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        function deleteUserConfirmed(id) {
             $.ajax({
-                url: API_BASE_URL + '/' + userId,
+                url: `/api/users/${id}`,
                 method: 'DELETE',
                 success: function() {
-                    showSuccess('User deleted successfully');
                     loadUsers();
                     loadStatistics();
+                    closeDeleteModal();
+                    showAlert('User deleted successfully!', 'success');
                 },
-                error: function(xhr, status, error) {
-                    console.error('Error deleting user:', error);
-                    showError('Failed to delete user');
+                error: function(xhr) {
+                    showAlert('Error deleting user: ' + xhr.responseText, 'error');
                 }
             });
         }
-    }
 
-    // Close modal
-    function closeModal() {
-        $('#userModal').hide();
-        editingUserId = null;
-    }
+        function exportData() {
+            if (currentUsers.length === 0) {
+                showAlert('No data to export', 'error');
+                return;
+            }
 
-    // Export data
-    function exportData() {
-        if (currentUsers.length === 0) {
-            showError('No data to export');
-            return;
+            const csvContent = convertToCSV(currentUsers);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'users_data.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showAlert('Data exported successfully!', 'success');
         }
 
-        const csvContent = convertToCSV(currentUsers);
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
+        function convertToCSV(data) {
+            const headers = ['ID', 'Full Name', 'Username', 'ID Number', 'Phone Number', 'Role', 'Created', 'Updated'];
+            let csv = headers.join(',') + '\n';
 
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'users_data.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+            data.forEach(user => {
+                const row = [
+                    user.id,
+                    '"' + user.fullName + '"',
+                    '"' + user.username + '"',
+                    '"' + user.idNumber + '"',
+                    '"' + (user.phoneNumber || '') + '"',
+                    user.role,
+                    formatDateTime(user.created),
+                    formatDateTime(user.updated)
+                ];
+                csv += row.join(',') + '\n';
+            });
 
-        showSuccess('Data exported successfully');
-    }
-
-    // Convert data to CSV
-    function convertToCSV(data) {
-        const headers = ['ID', 'Full Name', 'Username', 'ID Number', 'Phone Number', 'Role', 'Created', 'Updated'];
-        let csv = headers.join(',') + '\n';
-
-        data.forEach(user => {
-            const row = [
-                user.id,
-                '"' + user.fullName + '"',
-                '"' + user.username + '"',
-                '"' + user.idNumber + '"',
-                '"' + (user.phoneNumber || '') + '"',
-                user.role,
-                formatDateTime(user.created),
-                formatDateTime(user.updated)
-            ];
-            csv += row.join(',') + '\n';
-        });
-
-        return csv;
-    }
-
-    // Utility functions
-    function formatRole(role) {
-        switch(role) {
-            case 'ADMIN': return 'Admin';
-            case 'CHILDREN_REPS': return 'Children Rep';
-            case 'VOLUNTEERS': return 'Volunteer';
-            case 'DOCTORS': return 'Doctor';
-            default: return role;
+            return csv;
         }
-    }
 
-    function formatDateTime(dateString) {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-
-    function showSuccess(message) {
-        const alertDiv = $('<div class="alert alert-success">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    function showError(message) {
-        const alertDiv = $('<div class="alert alert-error">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    // Close modal when clicking outside
-    $(window).click(function(event) {
-        if (event.target.id === 'userModal') {
-            closeModal();
+        function formatRole(role) {
+            switch(role) {
+                case 'CHILDREN_REPS': return 'Children Rep';
+                case 'VOLUNTEERS': return 'Volunteer';
+                case 'DOCTORS': return 'Doctor';
+                default: return role;
+            }
         }
-    });
 
-    // Close modal with Escape key
-    $(document).keydown(function(event) {
-        if (event.key === 'Escape') {
-            closeModal();
+        function formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
-    });
 
-    // Handle form submission with Enter key
-    $('#userForm').keydown(function(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            saveUser();
+        function showLoading(show) {
+            if (show) {
+                $('#usersTableContent').html(`
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading users...</p>
+                    </div>
+                `);
+            }
         }
+
+        function showAlert(message, type) {
+            // Create alert element
+            const alertDiv = $(`
+                <div class="alert alert-${type}" style="position: fixed; top: 20px; right: 20px; z-index: 3000;
+                     padding: 1rem 1.5rem; border-radius: 12px; color: white; font-weight: 500;
+                     max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                     background: ${type === 'success' ? 'linear-gradient(135deg, #27ae60, #2ecc71)' : 'linear-gradient(135deg, #e74c3c, #c0392b)'};
+                     animation: slideInRight 0.3s ease;">
+                    ${message}
+                </div>
+            `);
+
+            $('body').append(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        function previewImage() {
+            const file = $('#imageFile')[0].files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#imagePreview').attr('src', e.target.result).show();
+                };
+                reader.readAsDataURL(file);
+                $('#fileText').text(file.name);
+            }
+        }
+
+        // Global functions for button onclick events
+        window.editUser = editUser;
+        window.deleteUser = deleteUser;
+        window.previewImage = previewImage;
     });
 </script>
-
 </body>
 </html>

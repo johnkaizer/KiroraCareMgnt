@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,8 +19,16 @@ public class VolunteerController {
     private final VolunteerService volunteerService;
 
     @PostMapping
-    public ResponseEntity<Volunteer> createVolunteer(@RequestBody Volunteer volunteer) {
-        return ResponseEntity.ok(volunteerService.saveVolunteer(volunteer));
+    public ResponseEntity<Volunteer> createVolunteer(@RequestBody @Validated Volunteer volunteer) {
+        try {
+            Volunteer savedVolunteer = volunteerService.saveVolunteer(volunteer);
+            return ResponseEntity.ok(savedVolunteer);
+        } catch (Exception e) {
+            // Log the error for debugging
+            System.err.println("Error creating volunteer: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/{id}")

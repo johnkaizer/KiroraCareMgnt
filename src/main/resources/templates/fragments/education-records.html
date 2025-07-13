@@ -414,10 +414,10 @@
 
     <!-- Controls -->
     <div class="controls">
-        <button class="btn btn-primary" onclick="openAddModal()">
+        <button class="btn btn-primary" id="addRecordBtn">
             <i class="fas fa-plus"></i> Add Record
         </button>
-        <button class="btn btn-secondary" onclick="exportData()">
+        <button class="btn btn-secondary" id="exportBtn">
             <i class="fas fa-download"></i> Export
         </button>
         <div class="search-container">
@@ -446,7 +446,7 @@
                 <option value="2021">2021</option>
                 <option value="2020">2020</option>
             </select>
-            <button class="btn btn-primary" onclick="searchRecords()">
+            <button class="btn btn-primary" id="searchBtn">
                 <i class="fas fa-search"></i> Search
             </button>
         </div>
@@ -494,10 +494,11 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2 id="modalTitle">Add New Education Record</h2>
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" id="closeModal">&times;</span>
         </div>
         <div class="modal-body">
             <form id="recordForm">
+                <input type="hidden" id="recordId" value="">
                 <div class="form-group">
                     <label for="childSelect">Child *</label>
                     <select id="childSelect" name="childId" required>
@@ -551,122 +552,196 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-success" onclick="saveRecord()">
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="btn btn-success" id="saveBtn">
                 <i class="fas fa-save"></i> Save
             </button>
         </div>
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Confirm Delete</h2>
+            <button class="close" id="closeDeleteModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this education record? This action cannot be undone.</p>
+            <p><strong id="deleteRecordName"></strong></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                <i class="fas fa-trash"></i>
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // API Configuration
-    const EDU_API_BASE_URL = '/api/education-records';
-    const CHILDREN_API_URL = '/api/children';
-
-    // Global variables
-    let currentRecords = [];
-    let availableChildren = [];
-    let editingRecordId = null;
-
-    // Initialize the application
     $(document).ready(function() {
-        loadChildren();
-        loadRecords();
-        loadStatistics();
+        // Global variables
+        let currentRecordId = null;
+        let isEditing = false;
+        let currentRecords = [];
+        let availableChildren = [];
 
-        // Set up search input listener
-        $('#searchInput').on('input', function() {
-            if ($(this).val().length === 0) {
-                loadRecords();
-            }
-        });
+        // Initialize the page
+        init();
 
-        // Set up filter listeners
-        $('#gradeFilter, #yearFilter').on('change', function() {
-            filterRecords();
-        });
-    });
+        function init() {
+            loadChildren();
+            loadRecords();
+            bindEvents();
+        }
 
-    // Load all children for dropdown
-    function loadChildren() {
-        $.ajax({
-            url: CHILDREN_API_URL,
-            method: 'GET',
-            success: function(data) {
-                availableChildren = data;
-                populateChildrenDropdown();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading children:', error);
-                showError('Failed to load children data');
-            }
-        });
-    }
+        function bindEvents() {
+            // Add record button
+            $('#addRecordBtn').click(function() {
+                openModal('add');
+            });
 
-    // Populate children dropdown
-    function populateChildrenDropdown() {
-        const select = $('#childSelect');
-        select.empty();
-        select.append('<option value="">Select a child</option>');
+            // Export button
+            $('#exportBtn').click(function() {
+                exportData();
+            });
 
-        availableChildren.forEach(child => {
-            select.append(`<option value="${child.id}">${child.firstName} ${child.lastName}</option>`);
-        });
-    }
+            // Modal close events
+            $('#closeModal, #cancelBtn').click(function() {
+                closeModal();
+            });
 
-    // Load all education records
-    function loadRecords() {
-        // Since there's no direct endpoint to get all records, we'll use a workaround
-        // In a real scenario, you'd add a GET /api/education-records endpoint
-        $.ajax({
-            url: CHILDREN_API_URL,
-            method: 'GET',
-            success: function(children) {
-                let allRecords = [];
-                let completedRequests = 0;
+            $('#closeDeleteModal, #cancelDeleteBtn').click(function() {
+                closeDeleteModal();
+            });
 
-                if (children.length === 0) {
-                    displayRecords([]);
-                    return;
+            // Form submission
+            $('#recordForm').submit(function(e) {
+                e.preventDefault();
+                saveRecord();
+            });
+
+            // Save button click
+            $('#saveBtn').click(function(e) {
+                e.preventDefault();
+                saveRecord();
+            });
+
+            // Search functionality
+            $('#searchInput').on('input', function() {
+                const searchTerm = $(this).val().toLowerCase();
+                if (searchTerm === '') {
+                    displayRecords(currentRecords);
+                } else {
+                    filterRecords();
                 }
+            });
 
-                children.forEach(child => {
-                    $.ajax({
-                        url: EDU_API_BASE_URL + '/child/' + child.id,
-                        method: 'GET',
-                        success: function(records) {
-                            allRecords = allRecords.concat(records);
-                            completedRequests++;
+            // Search button
+            $('#searchBtn').click(function() {
+                filterRecords();
+            });
 
-                            if (completedRequests === children.length) {
-                                currentRecords = allRecords;
-                                displayRecords(allRecords);
+            // Filter listeners
+            $('#gradeFilter, #yearFilter').change(function() {
+                filterRecords();
+            });
+
+            // Delete confirmation
+            $('#confirmDeleteBtn').click(function() {
+                deleteRecordConfirmed(currentRecordId);
+            });
+
+            // Close modal when clicking outside
+            $('.modal').click(function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+
+            $('.close').click(closeModal);
+        }
+
+        function loadChildren() {
+            $.ajax({
+                url: '/api/children',
+                method: 'GET',
+                success: function(children) {
+                    availableChildren = children;
+                    populateChildrenDropdown();
+                },
+                error: function(xhr) {
+                    showAlert('Error loading children: ' + xhr.responseText, 'error');
+                }
+            });
+        }
+
+        function populateChildrenDropdown() {
+            const select = $('#childSelect');
+            select.empty();
+            select.append('<option value="">Select a child</option>');
+
+            availableChildren.forEach(child => {
+                select.append(`<option value="${child.id}">${child.firstName} ${child.lastName}</option>`);
+            });
+        }
+
+        function loadRecords() {
+            showLoading(true);
+
+            $.ajax({
+                url: '/api/children',
+                method: 'GET',
+                success: function(children) {
+                    let allRecords = [];
+                    let completedRequests = 0;
+
+                    if (children.length === 0) {
+                        currentRecords = [];
+                        displayRecords([]);
+                        showLoading(false);
+                        return;
+                    }
+
+                    children.forEach(child => {
+                        $.ajax({
+                            url: `/api/education-records/child/${child.id}`,
+                            method: 'GET',
+                            success: function(records) {
+                                allRecords = allRecords.concat(records);
+                                completedRequests++;
+
+                                if (completedRequests === children.length) {
+                                    currentRecords = allRecords;
+                                    displayRecords(allRecords);
+                                    loadStatistics();
+                                    showLoading(false);
+                                }
+                            },
+                            error: function() {
+                                completedRequests++;
+                                if (completedRequests === children.length) {
+                                    currentRecords = allRecords;
+                                    displayRecords(allRecords);
+                                    loadStatistics();
+                                    showLoading(false);
+                                }
                             }
-                        },
-                        error: function() {
-                            completedRequests++;
-                            if (completedRequests === children.length) {
-                                currentRecords = allRecords;
-                                displayRecords(allRecords);
-                            }
-                        }
+                        });
                     });
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading records:', error);
-                showError('Failed to load education records');
-                displayEmptyState();
-            }
-        });
-    }
+                },
+                error: function(xhr) {
+                    showAlert('Error loading records: ' + xhr.responseText, 'error');
+                    showLoading(false);
+                    displayEmptyState();
+                }
+            });
+        }
 
-    // Load statistics
-    function loadStatistics() {
-        // We'll calculate stats from the current records
-        // In a real scenario, you'd have dedicated endpoints for this
-        setTimeout(() => {
+        function loadStatistics() {
             const totalRecords = currentRecords.length;
             const currentYearRecords = currentRecords.filter(r => r.academicYear === new Date().getFullYear().toString()).length;
             const uniqueSchools = new Set(currentRecords.map(r => r.schoolName)).size;
@@ -674,268 +749,291 @@
             $('#totalRecords').text(totalRecords);
             $('#currentYear').text(currentYearRecords);
             $('#uniqueSchools').text(uniqueSchools);
-        }, 500);
-    }
-
-    // Display records in table
-    function displayRecords(records) {
-        const tableContent = $('#recordsTableContent');
-
-        if (records.length === 0) {
-            displayEmptyState();
-            return;
         }
 
-        let html = '';
-        records.forEach(record => {
-            const child = availableChildren.find(c => c.id === record.child.id);
-            const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
+        function displayRecords(records) {
+            const tableContent = $('#recordsTableContent');
 
-            html += `
-                <div class="record-row">
-                    <div class="child-name">${childName}</div>
-                    <div class="school-name">${record.schoolName}</div>
-                    <div><span class="grade-badge">${record.grade}</span></div>
-                    <div>${record.academicYear}</div>
-                    <div>${formatDate(record.createdAt)}</div>
-                    <div class="actions">
-                        <button class="btn-sm btn-edit" onclick="editRecord(${record.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-sm btn-delete" onclick="deleteRecord(${record.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-
-        tableContent.html(html);
-        loadStatistics();
-    }
-
-    // Display empty state
-    function displayEmptyState() {
-        const tableContent = $('#recordsTableContent');
-        tableContent.html(`
-            <div class="empty-state">
-                <i class="fas fa-graduation-cap"></i>
-                <h3>No education records found</h3>
-                <p>Start by adding a new education record</p>
-            </div>
-        `);
-    }
-
-    // Search records
-    function searchRecords() {
-        const searchTerm = $('#searchInput').val().trim();
-
-        if (searchTerm === '') {
-            loadRecords();
-            return;
-        }
-
-        $.ajax({
-            url: EDU_API_BASE_URL + '/search',
-            method: 'GET',
-            data: { schoolName: searchTerm },
-            success: function(data) {
-                currentRecords = data;
-                displayRecords(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error searching records:', error);
-                showError('Failed to search records');
+            if (records.length === 0) {
+                displayEmptyState();
+                return;
             }
-        });
-    }
 
-    // Filter records
-    function filterRecords() {
-        const grade = $('#gradeFilter').val();
-        const year = $('#yearFilter').val();
+            let html = '';
+            records.forEach(record => {
+                const child = availableChildren.find(c => c.id === record.child.id);
+                const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
 
-        if (grade === '' && year === '') {
-            loadRecords();
-            return;
+                html += `
+                    <div class="record-row">
+                        <div class="child-name">${childName}</div>
+                        <div class="school-name">${record.schoolName}</div>
+                        <div><span class="grade-badge">${record.grade}</span></div>
+                        <div>${record.academicYear}</div>
+                        <div>${formatDate(record.createdAt)}</div>
+                        <div class="actions">
+                            <button class="btn-sm btn-edit" onclick="editRecord(${record.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-sm btn-delete" onclick="deleteRecord(${record.id}, '${childName}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            tableContent.html(html);
         }
 
-        let filteredRecords = currentRecords;
-
-        if (grade !== '') {
-            filteredRecords = filteredRecords.filter(record => record.grade === grade);
+        function displayEmptyState() {
+            const tableContent = $('#recordsTableContent');
+            tableContent.html(`
+                <div class="empty-state">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>No education records found</h3>
+                    <p>Start by adding a new education record</p>
+                </div>
+            `);
         }
 
-        if (year !== '') {
-            filteredRecords = filteredRecords.filter(record => record.academicYear === year);
+        function filterRecords() {
+            const searchTerm = $('#searchInput').val().trim().toLowerCase();
+            const grade = $('#gradeFilter').val();
+            const year = $('#yearFilter').val();
+
+            let filteredRecords = currentRecords;
+
+            if (searchTerm !== '') {
+                filteredRecords = filteredRecords.filter(record =>
+                    record.schoolName.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (grade !== '') {
+                filteredRecords = filteredRecords.filter(record => record.grade === grade);
+            }
+
+            if (year !== '') {
+                filteredRecords = filteredRecords.filter(record => record.academicYear === year);
+            }
+
+            displayRecords(filteredRecords);
         }
 
-        displayRecords(filteredRecords);
-    }
+        function openModal(mode, recordId = null) {
+            isEditing = mode === 'edit';
 
-    // Open add modal
-    function openAddModal() {
-        editingRecordId = null;
-        $('#modalTitle').text('Add New Education Record');
-        $('#recordForm')[0].reset();
-        $('#recordModal').show();
-    }
+            if (isEditing) {
+                $('#modalTitle').text('Edit Education Record');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Update Record');
+            } else {
+                $('#modalTitle').text('Add New Education Record');
+                $('#recordForm')[0].reset();
+                $('#recordId').val('');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Save Record');
+            }
 
-    // Edit record
-    function editRecord(recordId) {
-        editingRecordId = recordId;
-        $('#modalTitle').text('Edit Education Record');
+            $('#recordModal').show();
+            $('#childSelect').focus();
+        }
 
-        const record = currentRecords.find(r => r.id === recordId);
-        if (record) {
+        function closeModal() {
+            $('#recordModal').hide();
+            $('#recordForm')[0].reset();
+        }
+
+        function saveRecord() {
+            const recordId = $('#recordId').val();
+
+            // Validate required fields
+            const childId = $('#childSelect').val();
+            const schoolName = $('#schoolName').val().trim();
+            const grade = $('#grade').val();
+            const academicYear = $('#academicYear').val();
+
+            if (!childId || !schoolName || !grade || !academicYear) {
+                showAlert('Please fill in all required fields!', 'error');
+                return;
+            }
+
+            // Create record object
+            const recordData = {
+                child: { id: parseInt(childId) },
+                schoolName: schoolName,
+                grade: grade,
+                academicYear: academicYear,
+                performance: $('#performance').val().trim(),
+                notes: $('#notes').val().trim()
+            };
+
+            const url = recordId ? `/api/education-records/${recordId}` : '/api/education-records';
+            const method = recordId ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url,
+                method: method,
+                contentType: 'application/json',
+                data: JSON.stringify(recordData),
+                success: function(response) {
+                    loadRecords();
+                    closeModal();
+                    const message = recordId ? 'Education record updated successfully!' : 'Education record added successfully!';
+                    showAlert(message, 'success');
+                },
+                error: function(xhr) {
+                    showAlert('Error saving education record: ' + xhr.responseText, 'error');
+                }
+            });
+        }
+
+        function editRecord(id) {
+            // First try to find record in current data
+            const record = currentRecords.find(r => r.id === id);
+            if (record) {
+                populateForm(record);
+                openModal('edit', record.id);
+            } else {
+                // Fallback to API call if not found in current data
+                $.ajax({
+                    url: `/api/education-records/${id}`,
+                    method: 'GET',
+                    success: function(record) {
+                        populateForm(record);
+                        openModal('edit', record.id);
+                    },
+                    error: function(xhr) {
+                        showAlert('Error fetching record details: ' + xhr.responseText, 'error');
+                    }
+                });
+            }
+        }
+
+        function populateForm(record) {
+            $('#recordId').val(record.id);
             $('#childSelect').val(record.child.id);
             $('#schoolName').val(record.schoolName);
             $('#grade').val(record.grade);
             $('#academicYear').val(record.academicYear);
-            $('#performance').val(record.performance || '');
-            $('#notes').val(record.notes || '');
+            $('#performance').val(record.performance);
+            $('#notes').val(record.notes);
         }
 
-        $('#recordModal').show();
-    }
-
-    // Save record
-    function saveRecord() {
-        const formData = {
-            child: { id: parseInt($('#childSelect').val()) },
-            schoolName: $('#schoolName').val().trim(),
-            grade: $('#grade').val(),
-            academicYear: $('#academicYear').val(),
-            performance: $('#performance').val().trim(),
-            notes: $('#notes').val().trim()
-        };
-
-        // Validation
-        if (!formData.child.id || !formData.schoolName || !formData.grade || !formData.academicYear) {
-            showError('Please fill in all required fields');
-            return;
+        function deleteRecord(id, childName) {
+            currentRecordId = id;
+            $('#deleteRecordName').text(`Education record for ${childName}`);
+            $('#deleteModal').show();
         }
 
-        const url = editingRecordId ? EDU_API_BASE_URL + '/' + editingRecordId : EDU_API_BASE_URL;
-        const method = editingRecordId ? 'PUT' : 'POST';
+        function closeDeleteModal() {
+            $('#deleteModal').hide();
+            currentRecordId = null;
+        }
 
-        $.ajax({
-            url: url,
-            method: method,
-            contentType: 'application/json',
-            data: JSON.stringify(formData),
-            success: function(data) {
-                showSuccess(editingRecordId ? 'Record updated successfully' : 'Record added successfully');
-                closeModal();
-                loadRecords();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error saving record:', error);
-                showError('Failed to save record');
-            }
-        });
-    }
-
-    // Delete record
-    function deleteRecord(recordId) {
-        if (confirm('Are you sure you want to delete this education record? This action cannot be undone.')) {
+        function deleteRecordConfirmed(id) {
             $.ajax({
-                url: EDU_API_BASE_URL + '/' + recordId,
+                url: `/api/education-records/${id}`,
                 method: 'DELETE',
                 success: function() {
-                    showSuccess('Record deleted successfully');
                     loadRecords();
+                    closeDeleteModal();
+                    showAlert('Education record deleted successfully!', 'success');
                 },
-                error: function(xhr, status, error) {
-                    console.error('Error deleting record:', error);
-                    showError('Failed to delete record');
+                error: function(xhr) {
+                    showAlert('Error deleting education record: ' + xhr.responseText, 'error');
                 }
             });
         }
-    }
 
-    // Close modal
-    function closeModal() {
-        $('#recordModal').hide();
-        editingRecordId = null;
-    }
+        function exportData() {
+            if (currentRecords.length === 0) {
+                showAlert('No data to export', 'error');
+                return;
+            }
 
-    // Export data
-    function exportData() {
-        if (currentRecords.length === 0) {
-            showError('No data to export');
-            return;
+            const csvContent = convertToCSV(currentRecords);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'education_records.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showAlert('Data exported successfully!', 'success');
         }
 
-        const csvContent = convertToCSV(currentRecords);
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
+        function convertToCSV(data) {
+            const headers = ['ID', 'Child Name', 'School Name', 'Grade', 'Academic Year', 'Performance', 'Notes', 'Created At'];
+            let csv = headers.join(',') + '\n';
 
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'education_records.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+            data.forEach(record => {
+                const child = availableChildren.find(c => c.id === record.child.id);
+                const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
 
-        showSuccess('Data exported successfully');
-    }
+                const row = [
+                    record.id,
+                    '"' + childName + '"',
+                    '"' + record.schoolName + '"',
+                    record.grade,
+                    record.academicYear,
+                    '"' + (record.performance || '').replace(/"/g, '""') + '"',
+                    '"' + (record.notes || '').replace(/"/g, '""') + '"',
+                    formatDate(record.createdAt)
+                ];
+                csv += row.join(',') + '\n';
+            });
 
-    // Convert data to CSV
-    function convertToCSV(data) {
-        const headers = ['ID', 'Child Name', 'School Name', 'Grade', 'Academic Year', 'Performance', 'Notes', 'Created At'];
-        let csv = headers.join(',') + '\n';
-
-        data.forEach(record => {
-            const child = availableChildren.find(c => c.id === record.child.id);
-            const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
-
-            const row = [
-                record.id,
-                '"' + childName + '"',
-                '"' + record.schoolName + '"',
-                record.grade,
-                record.academicYear,
-                '"' + (record.performance || '').replace(/"/g, '""') + '"',
-                '"' + (record.notes || '').replace(/"/g, '""') + '"',
-                formatDate(record.createdAt)
-            ];
-            csv += row.join(',') + '\n';
-        });
-
-        return csv;
-    }
-
-    // Utility functions
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    }
-
-    function showSuccess(message) {
-        const alertDiv = $('<div class="alert alert-success">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    function showError(message) {
-        const alertDiv = $('<div class="alert alert-error">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    // Close modal when clicking outside
-    $(window).click(function(event) {
-        if (event.target.id === 'recordModal') {
-            closeModal();
+            return csv;
         }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function showLoading(show) {
+            if (show) {
+                $('#recordsTableContent').html(`
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading records...</p>
+                    </div>
+                `);
+            }
+        }
+
+        function showAlert(message, type) {
+            // Create alert element
+            const alertDiv = $(`
+                <div class="alert alert-${type}" style="position: fixed; top: 20px; right: 20px; z-index: 3000;
+                     padding: 1rem 1.5rem; border-radius: 12px; color: white; font-weight: 500;
+                     max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                     background: ${type === 'success' ? 'linear-gradient(135deg, #27ae60, #2ecc71)' : 'linear-gradient(135deg, #e74c3c, #c0392b)'};
+                     animation: slideInRight 0.3s ease;">
+                    ${message}
+                </div>
+            `);
+
+            $('body').append(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Global functions for button onclick events
+        window.editRecord = editRecord;
+        window.deleteRecord = deleteRecord;
     });
 </script>
 </body>

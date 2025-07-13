@@ -19,6 +19,13 @@ public class VolunteerService {
     private final VolunteerRepository volunteerRepository;
 
     public Volunteer saveVolunteer(Volunteer volunteer) {
+        // Ensure default values are set if not provided
+        if (volunteer.getRegistrationDate() == null) {
+            volunteer.setRegistrationDate(LocalDate.now());
+        }
+        if (volunteer.getStatus() == null) {
+            volunteer.setStatus(VolunteerStatus.ACTIVE);
+        }
         return volunteerRepository.save(volunteer);
     }
 
@@ -70,6 +77,10 @@ public class VolunteerService {
                     volunteer.setAvailability(volunteerDetails.getAvailability());
                     volunteer.setStatus(volunteerDetails.getStatus());
                     volunteer.setNotes(volunteerDetails.getNotes());
+                    volunteer.setLinkedUserId(volunteerDetails.getLinkedUserId()); // Add this line
+                    if (volunteerDetails.getRegistrationDate() != null) {
+                        volunteer.setRegistrationDate(volunteerDetails.getRegistrationDate());
+                    }
                     return volunteerRepository.save(volunteer);
                 })
                 .orElseThrow(() -> new RuntimeException("Volunteer not found with id: " + id));

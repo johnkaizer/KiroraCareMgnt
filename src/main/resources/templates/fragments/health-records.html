@@ -445,20 +445,20 @@
 
     <!-- Controls -->
     <div class="controls">
-        <button class="btn btn-primary" onclick="openAddModal()">
+        <button class="btn btn-primary" id="addRecordBtn">
             <i class="fas fa-plus"></i> Add Health Record
         </button>
-        <button class="btn btn-warning" onclick="viewUpcomingAppointments()">
+        <button class="btn btn-warning" id="viewAppointmentsBtn">
             <i class="fas fa-calendar-alt"></i> Upcoming Appointments
         </button>
-        <button class="btn btn-secondary" onclick="exportData()">
+        <button class="btn btn-secondary" id="exportBtn">
             <i class="fas fa-download"></i> Export
         </button>
         <div class="search-container">
             <input type="text" class="search-input" id="searchInput" placeholder="Search by diagnosis...">
             <input type="date" class="filter-select" id="dateFromFilter">
             <input type="date" class="filter-select" id="dateToFilter">
-            <button class="btn btn-primary" onclick="searchRecords()">
+            <button class="btn btn-primary" id="searchBtn">
                 <i class="fas fa-search"></i> Search
             </button>
         </div>
@@ -510,10 +510,11 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2 id="modalTitle">Add New Health Record</h2>
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" id="closeModal">&times;</span>
         </div>
         <div class="modal-body">
             <form id="healthRecordForm">
+                <input type="hidden" id="recordId" value="">
                 <div class="form-group">
                     <label for="childSelect">Child *</label>
                     <select id="childSelect" name="childId" required>
@@ -545,8 +546,8 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-success" onclick="saveHealthRecord()">
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="btn btn-success" id="saveBtn">
                 <i class="fas fa-save"></i> Save
             </button>
         </div>
@@ -558,7 +559,7 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2>Upcoming Appointments</h2>
-            <span class="close" onclick="closeAppointmentsModal()">&times;</span>
+            <span class="close" id="closeAppointmentsModal">&times;</span>
         </div>
         <div class="modal-body">
             <div id="appointmentsContent">
@@ -569,118 +570,205 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeAppointmentsModal()">Close</button>
+            <button class="btn btn-secondary" id="closeAppointmentsBtn">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Confirm Delete</h2>
+            <button class="close" id="closeDeleteModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this health record? This action cannot be undone.</p>
+            <p><strong id="deleteRecordName"></strong></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                <i class="fas fa-trash"></i>
+                Delete
+            </button>
         </div>
     </div>
 </div>
 
 <script>
-    // API Configuration
-    const HEALTH_API_BASE_URL = '/api/health-records';
-    const CHILDREN_API_URL = '/api/children';
-
-    // Global variables
-    let currentRecords = [];
-    let availableChildren = [];
-    let editingRecordId = null;
-
-    // Initialize the application
     $(document).ready(function() {
-        loadChildren();
-        loadRecords();
-        loadStatistics();
+        // Global variables
+        let currentRecordId = null;
+        let isEditing = false;
+        let currentRecords = [];
+        let availableChildren = [];
 
-        // Set up search input listener
-        $('#searchInput').on('input', function() {
-            if ($(this).val().length === 0) {
-                loadRecords();
-            }
-        });
+        // Initialize the page
+        init();
 
-        // Set up date filter listeners
-        $('#dateFromFilter, #dateToFilter').on('change', function() {
-            filterRecords();
-        });
+        function init() {
+            loadChildren();
+            loadRecords();
+            bindEvents();
+        }
 
-        // Set today's date as default for visit date
-        $('#visitDate').val(new Date().toISOString().split('T')[0]);
-    });
+        function bindEvents() {
+            // Add record button
+            $('#addRecordBtn').click(function() {
+                openModal('add');
+            });
 
-    // Load all children for dropdown
-    function loadChildren() {
-        $.ajax({
-            url: CHILDREN_API_URL,
-            method: 'GET',
-            success: function(data) {
-                availableChildren = data;
-                populateChildrenDropdown();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading children:', error);
-                showError('Failed to load children data');
-            }
-        });
-    }
+            // View appointments button
+            $('#viewAppointmentsBtn').click(function() {
+                viewUpcomingAppointments();
+            });
 
-    // Populate children dropdown
-    function populateChildrenDropdown() {
-        const select = $('#childSelect');
-        select.empty();
-        select.append('<option value="">Select a child</option>');
+            // Export button
+            $('#exportBtn').click(function() {
+                exportData();
+            });
 
-        availableChildren.forEach(child => {
-            select.append(`<option value="${child.id}">${child.firstName} ${child.lastName}</option>`);
-        });
-    }
+            // Modal close events
+            $('#closeModal, #cancelBtn').click(function() {
+                closeModal();
+            });
 
-    // Load all health records
-    function loadRecords() {
-        $.ajax({
-            url: CHILDREN_API_URL,
-            method: 'GET',
-            success: function(children) {
-                let allRecords = [];
-                let completedRequests = 0;
+            $('#closeAppointmentsModal, #closeAppointmentsBtn').click(function() {
+                closeAppointmentsModal();
+            });
 
-                if (children.length === 0) {
-                    displayRecords([]);
-                    return;
+            $('#closeDeleteModal, #cancelDeleteBtn').click(function() {
+                closeDeleteModal();
+            });
+
+            // Form submission
+            $('#healthRecordForm').submit(function(e) {
+                e.preventDefault();
+                saveHealthRecord();
+            });
+
+            // Save button click
+            $('#saveBtn').click(function(e) {
+                e.preventDefault();
+                saveHealthRecord();
+            });
+
+            // Search functionality
+            $('#searchInput').on('input', function() {
+                const searchTerm = $(this).val().toLowerCase();
+                if (searchTerm === '') {
+                    displayRecords(currentRecords);
+                } else {
+                    filterRecords();
                 }
+            });
 
-                children.forEach(child => {
-                    $.ajax({
-                        url: HEALTH_API_BASE_URL + '/child/' + child.id,
-                        method: 'GET',
-                        success: function(records) {
-                            allRecords = allRecords.concat(records);
-                            completedRequests++;
+            // Search button
+            $('#searchBtn').click(function() {
+                filterRecords();
+            });
 
-                            if (completedRequests === children.length) {
-                                currentRecords = allRecords;
-                                displayRecords(allRecords);
+            // Date filter listeners
+            $('#dateFromFilter, #dateToFilter').change(function() {
+                filterRecords();
+            });
+
+            // Delete confirmation
+            $('#confirmDeleteBtn').click(function() {
+                deleteHealthRecordConfirmed(currentRecordId);
+            });
+
+            // Close modal when clicking outside
+            $('.modal').click(function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+
+            $('.close').click(closeModal);
+
+            // Set today's date as default for visit date
+            $('#visitDate').val(new Date().toISOString().split('T')[0]);
+        }
+
+        function loadChildren() {
+            $.ajax({
+                url: '/api/children',
+                method: 'GET',
+                success: function(children) {
+                    availableChildren = children;
+                    populateChildrenDropdown();
+                },
+                error: function(xhr) {
+                    showAlert('Error loading children: ' + xhr.responseText, 'error');
+                }
+            });
+        }
+
+        function populateChildrenDropdown() {
+            const select = $('#childSelect');
+            select.empty();
+            select.append('<option value="">Select a child</option>');
+
+            availableChildren.forEach(child => {
+                select.append(`<option value="${child.id}">${child.firstName} ${child.lastName}</option>`);
+            });
+        }
+
+        function loadRecords() {
+            showLoading(true);
+
+            $.ajax({
+                url: '/api/children',
+                method: 'GET',
+                success: function(children) {
+                    let allRecords = [];
+                    let completedRequests = 0;
+
+                    if (children.length === 0) {
+                        currentRecords = [];
+                        displayRecords([]);
+                        showLoading(false);
+                        return;
+                    }
+
+                    children.forEach(child => {
+                        $.ajax({
+                            url: `/api/health-records/child/${child.id}`,
+                            method: 'GET',
+                            success: function(records) {
+                                allRecords = allRecords.concat(records);
+                                completedRequests++;
+
+                                if (completedRequests === children.length) {
+                                    currentRecords = allRecords;
+                                    displayRecords(allRecords);
+                                    loadStatistics();
+                                    showLoading(false);
+                                }
+                            },
+                            error: function() {
+                                completedRequests++;
+                                if (completedRequests === children.length) {
+                                    currentRecords = allRecords;
+                                    displayRecords(allRecords);
+                                    loadStatistics();
+                                    showLoading(false);
+                                }
                             }
-                        },
-                        error: function() {
-                            completedRequests++;
-                            if (completedRequests === children.length) {
-                                currentRecords = allRecords;
-                                displayRecords(allRecords);
-                            }
-                        }
+                        });
                     });
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading records:', error);
-                showError('Failed to load health records');
-                displayEmptyState();
-            }
-        });
-    }
+                },
+                error: function(xhr) {
+                    showAlert('Error loading records: ' + xhr.responseText, 'error');
+                    showLoading(false);
+                    displayEmptyState();
+                }
+            });
+        }
 
-    // Load statistics
-    function loadStatistics() {
-        setTimeout(() => {
+        function loadStatistics() {
             const totalRecords = currentRecords.length;
             const thisMonth = currentRecords.filter(r => {
                 const visitDate = new Date(r.visitDate);
@@ -700,395 +788,399 @@
             $('#thisMonth').text(thisMonth);
             $('#upcomingAppointments').text(upcoming);
             $('#uniqueChildren').text(uniqueChildren);
-        }, 500);
-    }
-
-    // Display records in table
-    function displayRecords(records) {
-        const tableContent = $('#recordsTableContent');
-
-        if (records.length === 0) {
-            displayEmptyState();
-            return;
         }
 
-        // Sort records by visit date (most recent first)
-        records.sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate));
+        function displayRecords(records) {
+            const tableContent = $('#recordsTableContent');
 
-        let html = '';
-        records.forEach(record => {
-            const child = availableChildren.find(c => c.id === record.child.id);
-            const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
-
-            const appointmentBadge = getAppointmentBadge(record.nextAppointment);
-            const truncatedDiagnosis = truncateText(record.diagnosis, 50);
-            const truncatedTreatment = truncateText(record.treatment, 40);
-
-            html += `
-                <div class="record-row">
-                    <div class="child-name">${childName}</div>
-                    <div class="visit-date">${formatDate(record.visitDate)}</div>
-                    <div class="diagnosis" title="${record.diagnosis}">${truncatedDiagnosis}</div>
-                    <div title="${record.treatment}">${truncatedTreatment}</div>
-                    <div>${appointmentBadge}</div>
-                    <div class="actions">
-                        <button class="btn-sm btn-edit" onclick="editHealthRecord(${record.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-sm btn-delete" onclick="deleteHealthRecord(${record.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-
-        tableContent.html(html);
-        loadStatistics();
-    }
-
-    // Get appointment badge
-    function getAppointmentBadge(nextAppointment) {
-        if (!nextAppointment) {
-            return '<span class="appointment-badge">None</span>';
-        }
-
-        const appointmentDate = new Date(nextAppointment);
-        const today = new Date();
-        const diffDays = Math.ceil((appointmentDate - today) / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) {
-            return `<span class="appointment-badge overdue">Overdue</span>`;
-        } else if (diffDays <= 7) {
-            return `<span class="appointment-badge upcoming">${formatDate(nextAppointment)}</span>`;
-        } else {
-            return `<span class="appointment-badge">${formatDate(nextAppointment)}</span>`;
-        }
-    }
-
-    // Display empty state
-    function displayEmptyState() {
-        const tableContent = $('#recordsTableContent');
-        tableContent.html(`
-            <div class="empty-state">
-                <i class="fas fa-heartbeat"></i>
-                <h3>No health records found</h3>
-                <p>Start by adding a new health record</p>
-            </div>
-        `);
-    }
-
-    // Search records
-    function searchRecords() {
-        const searchTerm = $('#searchInput').val().trim();
-        const dateFrom = $('#dateFromFilter').val();
-        const dateTo = $('#dateToFilter').val();
-
-        if (searchTerm === '' && dateFrom === '' && dateTo === '') {
-            loadRecords();
-            return;
-        }
-
-        // Filter current records based on search criteria
-        let filteredRecords = currentRecords;
-
-        if (searchTerm !== '') {
-            filteredRecords = filteredRecords.filter(record =>
-                record.diagnosis.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                record.treatment.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        if (dateFrom !== '') {
-            filteredRecords = filteredRecords.filter(record =>
-                new Date(record.visitDate) >= new Date(dateFrom)
-            );
-        }
-
-        if (dateTo !== '') {
-            filteredRecords = filteredRecords.filter(record =>
-                new Date(record.visitDate) <= new Date(dateTo)
-            );
-        }
-
-        displayRecords(filteredRecords);
-    }
-
-    // Filter records
-    function filterRecords() {
-        searchRecords();
-    }
-
-    // View upcoming appointments
-    function viewUpcomingAppointments() {
-        $.ajax({
-            url: HEALTH_API_BASE_URL + '/upcoming-appointments',
-            method: 'GET',
-            success: function(appointments) {
-                displayUpcomingAppointments(appointments);
-                $('#appointmentsModal').show();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading appointments:', error);
-                showError('Failed to load upcoming appointments');
+            if (records.length === 0) {
+                displayEmptyState();
+                return;
             }
-        });
-    }
 
-    // Display upcoming appointments
-    function displayUpcomingAppointments(appointments) {
-        const content = $('#appointmentsContent');
+            // Sort records by visit date (most recent first)
+            records.sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate));
 
-        if (appointments.length === 0) {
-            content.html(`
+            let html = '';
+            records.forEach(record => {
+                const child = availableChildren.find(c => c.id === record.child.id);
+                const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
+
+                const appointmentBadge = getAppointmentBadge(record.nextAppointment);
+                const truncatedDiagnosis = truncateText(record.diagnosis, 50);
+                const truncatedTreatment = truncateText(record.treatment, 40);
+
+                html += `
+                    <div class="record-row">
+                        <div class="child-name">${childName}</div>
+                        <div class="visit-date">${formatDate(record.visitDate)}</div>
+                        <div class="diagnosis" title="${record.diagnosis}">${truncatedDiagnosis}</div>
+                        <div title="${record.treatment}">${truncatedTreatment}</div>
+                        <div>${appointmentBadge}</div>
+                        <div class="actions">
+                            <button class="btn-sm btn-edit" onclick="editHealthRecord(${record.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-sm btn-delete" onclick="deleteHealthRecord(${record.id}, '${childName}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            tableContent.html(html);
+        }
+
+        function displayEmptyState() {
+            const tableContent = $('#recordsTableContent');
+            tableContent.html(`
                 <div class="empty-state">
-                    <i class="fas fa-calendar-alt"></i>
-                    <h3>No upcoming appointments</h3>
-                    <p>All appointments are up to date</p>
+                    <i class="fas fa-heartbeat"></i>
+                    <h3>No health records found</h3>
+                    <p>Start by adding a new health record</p>
                 </div>
             `);
-            return;
         }
 
-        let html = '<div class="appointments-list">';
-        appointments.forEach(appointment => {
-            const child = availableChildren.find(c => c.id === appointment.child.id);
-            const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
-
-            html += `
-                <div class="appointment-item" style="padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong>${childName}</strong>
-                            <p style="margin: 5px 0; color: #64748b;">${formatDate(appointment.nextAppointment)}</p>
-                            <p style="margin: 0; font-size: 14px; color: #374151;">${appointment.diagnosis}</p>
-                        </div>
-                        <div>
-                            ${getAppointmentBadge(appointment.nextAppointment)}
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-
-        content.html(html);
-    }
-
-    // Open add modal
-    function openAddModal() {
-        editingRecordId = null;
-        $('#modalTitle').text('Add New Health Record');
-        $('#healthRecordForm')[0].reset();
-        $('#visitDate').val(new Date().toISOString().split('T')[0]);
-        $('#healthRecordModal').show();
-    }
-
-    // Edit health record
-    function editHealthRecord(recordId) {
-        editingRecordId = recordId;
-        $('#modalTitle').text('Edit Health Record');
-
-        const record = currentRecords.find(r => r.id === recordId);
-        if (record) {
-            $('#childSelect').val(record.child.id);
-            $('#visitDate').val(record.visitDate);
-            $('#diagnosis').val(record.diagnosis || '');
-            $('#treatment').val(record.treatment || '');
-            $('#notes').val(record.notes || '');
-            $('#nextAppointment').val(record.nextAppointment || '');
-        }
-
-        $('#healthRecordModal').show();
-    }
-
-    // Save health record
-    function saveHealthRecord() {
-        const formData = {
-            child: { id: parseInt($('#childSelect').val()) },
-            visitDate: $('#visitDate').val(),
-            diagnosis: $('#diagnosis').val().trim(),
-            treatment: $('#treatment').val().trim(),
-            notes: $('#notes').val().trim(),
-            nextAppointment: $('#nextAppointment').val() || null
-        };
-
-        // Validation
-        if (!formData.child.id || !formData.visitDate || !formData.diagnosis || !formData.treatment) {
-            showError('Please fill in all required fields');
-            return;
-        }
-
-        const url = editingRecordId ? HEALTH_API_BASE_URL + '/' + editingRecordId : HEALTH_API_BASE_URL;
-        const method = editingRecordId ? 'PUT' : 'POST';
-
-        $.ajax({
-            url: url,
-            method: method,
-            contentType: 'application/json',
-            data: JSON.stringify(formData),
-            success: function(data) {
-                showSuccess(editingRecordId ? 'Health record updated successfully' : 'Health record added successfully');
-                closeModal();
-                loadRecords();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error saving health record:', error);
-                showError('Failed to save health record');
+        function getAppointmentBadge(nextAppointment) {
+            if (!nextAppointment) {
+                return '<span class="appointment-badge">None</span>';
             }
-        });
-    }
 
-    // Delete health record
-    function deleteHealthRecord(recordId) {
-        if (confirm('Are you sure you want to delete this health record? This action cannot be undone.')) {
+            const appointmentDate = new Date(nextAppointment);
+            const today = new Date();
+            const diffDays = Math.ceil((appointmentDate - today) / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                return `<span class="appointment-badge overdue">Overdue</span>`;
+            } else if (diffDays <= 7) {
+                return `<span class="appointment-badge upcoming">${formatDate(nextAppointment)}</span>`;
+            } else {
+                return `<span class="appointment-badge">${formatDate(nextAppointment)}</span>`;
+            }
+        }
+
+        function filterRecords() {
+            const searchTerm = $('#searchInput').val().trim().toLowerCase();
+            const dateFrom = $('#dateFromFilter').val();
+            const dateTo = $('#dateToFilter').val();
+
+            if (searchTerm === '' && dateFrom === '' && dateTo === '') {
+                displayRecords(currentRecords);
+                return;
+            }
+
+            let filteredRecords = currentRecords;
+
+            if (searchTerm !== '') {
+                filteredRecords = filteredRecords.filter(record =>
+                    record.diagnosis.toLowerCase().includes(searchTerm) ||
+                    record.treatment.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (dateFrom !== '') {
+                filteredRecords = filteredRecords.filter(record =>
+                    new Date(record.visitDate) >= new Date(dateFrom)
+                );
+            }
+
+            if (dateTo !== '') {
+                filteredRecords = filteredRecords.filter(record =>
+                    new Date(record.visitDate) <= new Date(dateTo)
+                );
+            }
+
+            displayRecords(filteredRecords);
+        }
+
+        function viewUpcomingAppointments() {
             $.ajax({
-                url: HEALTH_API_BASE_URL + '/' + recordId,
-                method: 'DELETE',
-                success: function() {
-                    showSuccess('Health record deleted successfully');
-                    loadRecords();
+                url: '/api/health-records/upcoming-appointments',
+                method: 'GET',
+                success: function(appointments) {
+                    displayUpcomingAppointments(appointments);
+                    $('#appointmentsModal').show();
                 },
-                error: function(xhr, status, error) {
-                    console.error('Error deleting health record:', error);
-                    showError('Failed to delete health record');
+                error: function(xhr) {
+                    showAlert('Error loading appointments: ' + xhr.responseText, 'error');
                 }
             });
         }
-    }
 
-    // Close modal
-    function closeModal() {
-        $('#healthRecordModal').hide();
-        editingRecordId = null;
-    }
+        function displayUpcomingAppointments(appointments) {
+            const content = $('#appointmentsContent');
 
-    // Close appointments modal
-    function closeAppointmentsModal() {
-        $('#appointmentsModal').hide();
-    }
+            if (appointments.length === 0) {
+                content.html(`
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h3>No upcoming appointments</h3>
+                        <p>All appointments are up to date</p>
+                    </div>
+                `);
+                return;
+            }
 
-    // Export data (completion)
-    function exportData() {
-        if (currentRecords.length === 0) {
-            showError('No data to export');
-            return;
+            let html = '<div class="appointments-list">';
+            appointments.forEach(appointment => {
+                const child = availableChildren.find(c => c.id === appointment.child.id);
+                const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
+
+                html += `
+                    <div class="appointment-item" style="padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${childName}</strong>
+                                <p style="margin: 5px 0; color: #64748b;">${formatDate(appointment.nextAppointment)}</p>
+                                <p style="margin: 0; font-size: 14px; color: #374151;">${appointment.diagnosis}</p>
+                            </div>
+                            <div>
+                                ${getAppointmentBadge(appointment.nextAppointment)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            content.html(html);
         }
 
-        const csvContent = convertToCSV(currentRecords);
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `health_records_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        showSuccess('Data exported successfully');
-    }
+        function openModal(mode, recordId = null) {
+            isEditing = mode === 'edit';
 
-    // Convert records to CSV
-    function convertToCSV(records) {
-        const headers = ['Child Name', 'Visit Date', 'Diagnosis', 'Treatment', 'Notes', 'Next Appointment'];
-        let csvContent = headers.join(',') + '\n';
+            if (isEditing) {
+                $('#modalTitle').text('Edit Health Record');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Update Record');
+            } else {
+                $('#modalTitle').text('Add New Health Record');
+                $('#healthRecordForm')[0].reset();
+                $('#recordId').val('');
+                $('#visitDate').val(new Date().toISOString().split('T')[0]);
+                $('#saveBtn').html('<i class="fas fa-save"></i> Save Record');
+            }
 
-        records.forEach(record => {
-            const child = availableChildren.find(c => c.id === record.child.id);
-            const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
-
-            const row = [
-                `"${childName}"`,
-                `"${formatDate(record.visitDate)}"`,
-                `"${(record.diagnosis || '').replace(/"/g, '""')}"`,
-                `"${(record.treatment || '').replace(/"/g, '""')}"`,
-                `"${(record.notes || '').replace(/"/g, '""')}"`,
-                `"${record.nextAppointment ? formatDate(record.nextAppointment) : ''}"`
-            ];
-            csvContent += row.join(',') + '\n';
-        });
-
-        return csvContent;
-    }
-
-    // Utility functions
-    function formatDate(dateString) {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    }
-
-    function truncateText(text, maxLength) {
-        if (!text) return '';
-        if (text.length <= maxLength) return text;
-        return text.substring(0, maxLength) + '...';
-    }
-
-    // Show success message
-    function showSuccess(message) {
-        const alert = `
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> ${message}
-            </div>
-        `;
-        $('.container').prepend(alert);
-        setTimeout(() => {
-            $('.alert-success').fadeOut(() => {
-                $('.alert-success').remove();
-            });
-        }, 3000);
-    }
-
-    // Show error message
-    function showError(message) {
-        const alert = `
-            <div class="alert alert-error">
-                <i class="fas fa-exclamation-circle"></i> ${message}
-            </div>
-        `;
-        $('.container').prepend(alert);
-        setTimeout(() => {
-            $('.alert-error').fadeOut(() => {
-                $('.alert-error').remove();
-            });
-        }, 5000);
-    }
-
-    // Show warning message
-    function showWarning(message) {
-        const alert = `
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle"></i> ${message}
-            </div>
-        `;
-        $('.container').prepend(alert);
-        setTimeout(() => {
-            $('.alert-warning').fadeOut(() => {
-                $('.alert-warning').remove();
-            });
-        }, 4000);
-    }
-
-    // Modal close on outside click
-    $(window).on('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            closeModal();
-            closeAppointmentsModal();
+            $('#healthRecordModal').show();
+            $('#childSelect').focus();
         }
+
+        function closeModal() {
+            $('#healthRecordModal').hide();
+            $('#healthRecordForm')[0].reset();
+        }
+
+        function closeAppointmentsModal() {
+            $('#appointmentsModal').hide();
+        }
+
+        function saveHealthRecord() {
+            const recordId = $('#recordId').val();
+
+            // Validate required fields
+            const childId = $('#childSelect').val();
+            const visitDate = $('#visitDate').val();
+            const diagnosis = $('#diagnosis').val().trim();
+            const treatment = $('#treatment').val().trim();
+
+            if (!childId || !visitDate || !diagnosis || !treatment) {
+                showAlert('Please fill in all required fields!', 'error');
+                return;
+            }
+
+            // Create record object
+            const recordData = {
+                child: { id: parseInt(childId) },
+                visitDate: visitDate,
+                diagnosis: diagnosis,
+                treatment: treatment,
+                notes: $('#notes').val().trim(),
+                nextAppointment: $('#nextAppointment').val() || null
+            };
+
+            const url = recordId ? `/api/health-records/${recordId}` : '/api/health-records';
+            const method = recordId ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url,
+                method: method,
+                contentType: 'application/json',
+                data: JSON.stringify(recordData),
+                success: function(response) {
+                    loadRecords();
+                    closeModal();
+                    const message = recordId ? 'Health record updated successfully!' : 'Health record added successfully!';
+                    showAlert(message, 'success');
+                },
+                error: function(xhr) {
+                    showAlert('Error saving health record: ' + xhr.responseText, 'error');
+                }
+            });
+        }
+
+        function editHealthRecord(id) {
+            // First try to find record in current data
+            const record = currentRecords.find(r => r.id === id);
+            if (record) {
+                populateForm(record);
+                openModal('edit', record.id);
+            } else {
+                // Fallback to API call if not found in current data
+                $.ajax({
+                    url: `/api/health-records/${id}`,
+                    method: 'GET',
+                    success: function(record) {
+                        populateForm(record);
+                        openModal('edit', record.id);
+                    },
+                    error: function(xhr) {
+                        showAlert('Error fetching record details: ' + xhr.responseText, 'error');
+                    }
+                });
+            }
+        }
+
+        function populateForm(record) {
+            $('#recordId').val(record.id);
+            $('#childSelect').val(record.child.id);
+            $('#visitDate').val(record.visitDate);
+            $('#diagnosis').val(record.diagnosis);
+            $('#treatment').val(record.treatment);
+            $('#notes').val(record.notes);
+            $('#nextAppointment').val(record.nextAppointment);
+        }
+
+        function deleteHealthRecord(id, childName) {
+            currentRecordId = id;
+            $('#deleteRecordName').text(`Health record for ${childName}`);
+            $('#deleteModal').show();
+        }
+
+        function closeDeleteModal() {
+            $('#deleteModal').hide();
+            currentRecordId = null;
+        }
+
+        function deleteHealthRecordConfirmed(id) {
+            $.ajax({
+                url: `/api/health-records/${id}`,
+                method: 'DELETE',
+                success: function() {
+                    loadRecords();
+                    closeDeleteModal();
+                    showAlert('Health record deleted successfully!', 'success');
+                },
+                error: function(xhr) {
+                    showAlert('Error deleting health record: ' + xhr.responseText, 'error');
+                }
+            });
+        }
+
+        function exportData() {
+            if (currentRecords.length === 0) {
+                showAlert('No data to export', 'error');
+                return;
+            }
+
+            const csvContent = convertToCSV(currentRecords);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', `health_records_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showAlert('Data exported successfully!', 'success');
+        }
+
+        function convertToCSV(records) {
+            const headers = ['Child Name', 'Visit Date', 'Diagnosis', 'Treatment', 'Notes', 'Next Appointment'];
+            let csvContent = headers.join(',') + '\n';
+
+            records.forEach(record => {
+                const child = availableChildren.find(c => c.id === record.child.id);
+                const childName = child ? `${child.firstName} ${child.lastName}` : 'Unknown Child';
+
+                const row = [
+                    `"${childName}"`,
+                    `"${formatDate(record.visitDate)}"`,
+                    `"${(record.diagnosis || '').replace(/"/g, '""')}"`,
+                    `"${(record.treatment || '').replace(/"/g, '""')}"`,
+                    `"${(record.notes || '').replace(/"/g, '""')}"`,
+                    `"${record.nextAppointment ? formatDate(record.nextAppointment) : ''}"`
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+
+            return csvContent;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function truncateText(text, maxLength) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        function showLoading(show) {
+            if (show) {
+                $('#recordsTableContent').html(`
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading health records...</p>
+                    </div>
+                `);
+            }
+        }
+
+        function showAlert(message, type) {
+            // Create alert element
+            const alertDiv = $(`
+                <div class="alert alert-${type}" style="position: fixed; top: 20px; right: 20px; z-index: 3000;
+                     padding: 1rem 1.5rem; border-radius: 12px; color: white; font-weight: 500;
+                     max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                     background: ${getAlertColor(type)};
+                     animation: slideInRight 0.3s ease;">
+                    ${message}
+                </div>
+            `);
+
+            $('body').append(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        function getAlertColor(type) {
+            switch(type) {
+                case 'success':
+                    return 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                case 'error':
+                    return 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                case 'warning':
+                    return 'linear-gradient(135deg, #f39c12, #e67e22)';
+                default:
+                    return 'linear-gradient(135deg, #3498db, #2980b9)';
+            }
+        }
+
+        // Global functions for button onclick events
+        window.editHealthRecord = editHealthRecord;
+        window.deleteHealthRecord = deleteHealthRecord;
     });
-
-    // Escape key to close modals
-    $(document).on('keydown', function(event) {
-        if (event.key === 'Escape') {
-            closeModal();
-            closeAppointmentsModal();
-        }
-    });
-</script>
-</body>
-</html>

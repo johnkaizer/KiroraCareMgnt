@@ -43,6 +43,9 @@ public class Volunteer {
     @Column(length = 1000)
     private String notes;
 
+    // Add the linkedUserId field that the frontend expects
+    private Long linkedUserId;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -63,4 +66,3 @@ public class Volunteer {
         updatedAt = LocalDateTime.now();
     }
 }
-

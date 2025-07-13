@@ -428,10 +428,10 @@
 
     <!-- Controls -->
     <div class="controls">
-        <button class="btn btn-primary" onclick="openAddModal()">
+        <button class="btn btn-primary" id="addChildBtn">
             <i class="fas fa-plus"></i> Add Child
         </button>
-        <button class="btn btn-secondary" onclick="exportData()">
+        <button class="btn btn-secondary" id="exportBtn">
             <i class="fas fa-download"></i> Export
         </button>
         <div class="search-container">
@@ -442,7 +442,7 @@
                 <option value="INACTIVE">Inactive</option>
                 <option value="GRADUATED">Graduated</option>
             </select>
-            <button class="btn btn-primary" onclick="searchChildren()">
+            <button class="btn btn-primary" id="searchBtn">
                 <i class="fas fa-search"></i> Search
             </button>
         </div>
@@ -491,10 +491,11 @@
     <div class="modal-content">
         <div class="modal-header">
             <h2 id="modalTitle">Add New Child</h2>
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" id="closeModal">&times;</span>
         </div>
         <div class="modal-body">
             <form id="childForm">
+                <input type="hidden" id="childId" value="">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="firstName">First Name *</label>
@@ -540,102 +541,186 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-success" onclick="saveChild()">
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="btn btn-success" id="saveBtn">
                 <i class="fas fa-save"></i> Save
             </button>
         </div>
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Confirm Delete</h2>
+            <button class="close" id="closeDeleteModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this child? This action cannot be undone.</p>
+            <p><strong id="deleteChildName"></strong></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                <i class="fas fa-trash"></i>
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // API Configuration
-    const CHILD_API_BASE_URL = '/api/children';
-
-    // Global variables
-    let currentChildren = [];
-    let editingChildId = null;
-
-    // Initialize the application
     $(document).ready(function() {
-        loadChildren();
-        loadStatistics();
+        // Global variables
+        let currentChildId = null;
+        let isEditing = false;
+        let currentChildren = [];
 
-        // Set up search input listener
-        $('#searchInput').on('input', function() {
-            if ($(this).val().length === 0) {
-                loadChildren();
-            }
-        });
+        // Initialize the page
+        init();
 
-        // Set up status filter listener
-        $('#statusFilter').on('change', function() {
-            filterChildren();
-        });
-    });
-
-    // Load all children
-    function loadChildren() {
-        $.ajax({
-            url: CHILD_API_BASE_URL,
-            method: 'GET',
-            success: function(data) {
-                currentChildren = data;
-                displayChildren(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error loading children:', error);
-                showError('Failed to load children data');
-                displayEmptyState();
-            }
-        });
-    }
-
-    // Load statistics
-    function loadStatistics() {
-        // Load total children count
-        $.ajax({
-            url: CHILD_API_BASE_URL,
-            method: 'GET',
-            success: function(data) {
-                $('#totalChildren').text(data.length);
-            }
-        });
-
-        // Load active children count
-        $.ajax({
-            url: CHILD_API_BASE_URL + '/count/ACTIVE',
-            method: 'GET',
-            success: function(count) {
-                $('#activeChildren').text(count);
-            }
-        });
-
-        // Load graduated children count
-        $.ajax({
-            url: CHILD_API_BASE_URL + '/count/GRADUATED',
-            method: 'GET',
-            success: function(count) {
-                $('#graduatedChildren').text(count);
-            }
-        });
-    }
-
-    // Display children in table
-    function displayChildren(children) {
-        const tableContent = $('#childrenTableContent');
-
-        if (children.length === 0) {
-            displayEmptyState();
-            return;
+        function init() {
+            loadChildren();
+            loadStatistics();
+            bindEvents();
         }
 
-        let html = '';
-        children.forEach(child => {
-            const age = calculateAge(child.dateOfBirth);
-            const statusClass = 'status-' + child.status.toLowerCase();
+        function bindEvents() {
+            // Add child button
+            $('#addChildBtn').click(function() {
+                openModal('add');
+            });
 
-            html += `
+            // Modal close events
+            $('#closeModal, #cancelBtn').click(function() {
+                closeModal();
+            });
+
+            $('#closeDeleteModal, #cancelDeleteBtn').click(function() {
+                closeDeleteModal();
+            });
+
+            // Form submission
+            $('#childForm').submit(function(e) {
+                e.preventDefault();
+                saveChild();
+            });
+
+            // Save button click
+            $('#saveBtn').click(function(e) {
+                e.preventDefault();
+                saveChild();
+            });
+
+            // Search functionality
+            $('#searchInput').on('input', function() {
+                const searchTerm = $(this).val().toLowerCase();
+                if (searchTerm === '') {
+                    displayChildren(currentChildren);
+                } else {
+                    filterChildren(searchTerm);
+                }
+            });
+
+            // Search button
+            $('#searchBtn').click(function() {
+                const searchTerm = $('#searchInput').val().trim();
+                if (searchTerm) {
+                    searchChildren(searchTerm);
+                } else {
+                    loadChildren();
+                }
+            });
+
+            // Status filter
+            $('#statusFilter').change(function() {
+                const status = $(this).val();
+                filterByStatus(status);
+            });
+
+            // Export button
+            $('#exportBtn').click(function() {
+                exportData();
+            });
+
+            // Delete confirmation
+            $('#confirmDeleteBtn').click(function() {
+                deleteChildConfirmed(currentChildId);
+            });
+
+            // Close modal when clicking outside
+            $('.modal').click(function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+
+            $('.close').click(closeModal);
+        }
+
+        function loadChildren() {
+            showLoading(true);
+
+            $.ajax({
+                url: '/api/children',
+                method: 'GET',
+                success: function(children) {
+                    currentChildren = children;
+                    displayChildren(children);
+                    showLoading(false);
+                },
+                error: function(xhr) {
+                    showError('Error loading children: ' + xhr.responseText);
+                    showLoading(false);
+                    displayEmptyState();
+                }
+            });
+        }
+
+        function loadStatistics() {
+            // Load total children count
+            $.ajax({
+                url: '/api/children',
+                method: 'GET',
+                success: function(data) {
+                    $('#totalChildren').text(data.length);
+                }
+            });
+
+            // Load active children count
+            $.ajax({
+                url: '/api/children/count/ACTIVE',
+                method: 'GET',
+                success: function(count) {
+                    $('#activeChildren').text(count);
+                }
+            });
+
+            // Load graduated children count
+            $.ajax({
+                url: '/api/children/count/GRADUATED',
+                method: 'GET',
+                success: function(count) {
+                    $('#graduatedChildren').text(count);
+                }
+            });
+        }
+
+        function displayChildren(children) {
+            const tableContent = $('#childrenTableContent');
+
+            if (children.length === 0) {
+                displayEmptyState();
+                return;
+            }
+
+            let html = '';
+            children.forEach(child => {
+                const age = calculateAge(child.dateOfBirth);
+                const statusClass = 'status-' + child.status.toLowerCase();
+
+                html += `
                     <div class="child-row">
                         <div class="child-name">${child.firstName} ${child.lastName}</div>
                         <div>${formatDate(child.dateOfBirth)}</div>
@@ -647,91 +732,144 @@
                             <button class="btn-sm btn-edit" onclick="editChild(${child.id})">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-sm btn-delete" onclick="deleteChild(${child.id})">
+                            <button class="btn-sm btn-delete" onclick="deleteChild(${child.id}, '${child.firstName} ${child.lastName}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
                 `;
-        });
+            });
 
-        tableContent.html(html);
-    }
+            tableContent.html(html);
+        }
 
-    // Display empty state
-    function displayEmptyState() {
-        const tableContent = $('#childrenTableContent');
-        tableContent.html(`
+        function displayEmptyState() {
+            const tableContent = $('#childrenTableContent');
+            tableContent.html(`
                 <div class="empty-state">
                     <i class="fas fa-child"></i>
                     <h3>No children found</h3>
                     <p>Start by adding a new child to the system</p>
                 </div>
             `);
-    }
-
-    // Search children
-    function searchChildren() {
-        const searchTerm = $('#searchInput').val().trim();
-
-        if (searchTerm === '') {
-            loadChildren();
-            return;
         }
 
-        $.ajax({
-            url: CHILD_API_BASE_URL + '/search',
-            method: 'GET',
-            data: { term: searchTerm },
-            success: function(data) {
-                currentChildren = data;
-                displayChildren(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error searching children:', error);
-                showError('Failed to search children');
+        function calculateAge(birthDate) {
+            if (!birthDate) return 'N/A';
+
+            const today = new Date();
+            const birth = new Date(birthDate);
+            let age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                age--;
             }
-        });
-    }
 
-    // Filter children by status
-    function filterChildren() {
-        const status = $('#statusFilter').val();
-
-        if (status === '') {
-            loadChildren();
-            return;
+            return age + ' years';
         }
 
-        $.ajax({
-            url: CHILD_API_BASE_URL + '/status/' + status,
-            method: 'GET',
-            success: function(data) {
-                currentChildren = data;
-                displayChildren(data);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error filtering children:', error);
-                showError('Failed to filter children');
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function openModal(mode, childId = null) {
+            isEditing = mode === 'edit';
+
+            if (isEditing) {
+                $('#modalTitle').text('Edit Child');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Update');
+            } else {
+                $('#modalTitle').text('Add New Child');
+                $('#childForm')[0].reset();
+                $('#childId').val('');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Save');
             }
-        });
-    }
 
-    // Open add modal
-    function openAddModal() {
-        editingChildId = null;
-        $('#modalTitle').text('Add New Child');
-        $('#childForm')[0].reset();
-        $('#childModal').show();
-    }
+            $('#childModal').show();
+            $('#firstName').focus();
+        }
 
-    // Edit child
-    function editChild(childId) {
-        editingChildId = childId;
-        $('#modalTitle').text('Edit Child');
+        function closeModal() {
+            $('#childModal').hide();
+            $('#childForm')[0].reset();
+        }
 
-        const child = currentChildren.find(c => c.id === childId);
-        if (child) {
+        function saveChild() {
+            const childId = $('#childId').val();
+
+            // Validate required fields
+            const firstName = $('#firstName').val().trim();
+            const lastName = $('#lastName').val().trim();
+
+            if (!firstName || !lastName) {
+                showError('First name and last name are required!');
+                return;
+            }
+
+            // Create child object
+            const childData = {
+                firstName: firstName,
+                lastName: lastName,
+                dateOfBirth: $('#dateOfBirth').val() || null,
+                gender: $('#gender').val() || null,
+                admissionDate: $('#admissionDate').val() || null,
+                status: $('#status').val() || 'ACTIVE',
+                backgroundStory: $('#backgroundStory').val().trim()
+            };
+
+            const url = childId ? `/api/children/${childId}` : '/api/children';
+            const method = childId ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url,
+                method: method,
+                contentType: 'application/json',
+                data: JSON.stringify(childData),
+                success: function(response) {
+                    loadChildren();
+                    loadStatistics();
+                    closeModal();
+                    const message = childId ? 'Child updated successfully!' : 'Child added successfully!';
+                    showSuccess(message);
+                },
+                error: function(xhr) {
+                    showError('Error saving child: ' + xhr.responseText);
+                }
+            });
+        }
+
+        function editChild(id) {
+            // First try to find child in current data
+            const child = currentChildren.find(c => c.id === id);
+            if (child) {
+                populateForm(child);
+                openModal('edit', child.id);
+            } else {
+                // Fallback to API call if not found in current data
+                $.ajax({
+                    url: `/api/children/${id}`,
+                    method: 'GET',
+                    success: function(child) {
+                        populateForm(child);
+                        openModal('edit', child.id);
+                    },
+                    error: function(xhr) {
+                        showError('Error fetching child details: ' + xhr.responseText);
+                    }
+                });
+            }
+        }
+
+        function populateForm(child) {
+            $('#childId').val(child.id);
             $('#firstName').val(child.firstName);
             $('#lastName').val(child.lastName);
             $('#dateOfBirth').val(child.dateOfBirth);
@@ -741,163 +879,148 @@
             $('#backgroundStory').val(child.backgroundStory);
         }
 
-        $('#childModal').show();
-    }
-
-    // Save child
-    function saveChild() {
-        const formData = {
-            firstName: $('#firstName').val().trim(),
-            lastName: $('#lastName').val().trim(),
-            dateOfBirth: $('#dateOfBirth').val() || null,
-            gender: $('#gender').val() || null,
-            admissionDate: $('#admissionDate').val() || null,
-            status: $('#status').val() || 'ACTIVE',
-            backgroundStory: $('#backgroundStory').val().trim()
-        };
-
-        // Validation
-        if (!formData.firstName || !formData.lastName) {
-            showError('First name and last name are required');
-            return;
+        function deleteChild(id, name) {
+            currentChildId = id;
+            $('#deleteChildName').text(name);
+            $('#deleteModal').show();
         }
 
-        const url = editingChildId ? CHILD_API_BASE_URL + '/' + editingChildId : CHILD_API_BASE_URL;
-        const method = editingChildId ? 'PUT' : 'POST';
+        function closeDeleteModal() {
+            $('#deleteModal').hide();
+            currentChildId = null;
+        }
 
-        $.ajax({
-            url: url,
-            method: method,
-            contentType: 'application/json',
-            data: JSON.stringify(formData),
-            success: function(data) {
-                showSuccess(editingChildId ? 'Child updated successfully' : 'Child added successfully');
-                closeModal();
-                loadChildren();
-                loadStatistics();
-            },
-            error: function(xhr, status, error) {
-                console.error('Error saving child:', error);
-                showError('Failed to save child');
-            }
-        });
-    }
-
-    // Delete child
-    function deleteChild(childId) {
-        if (confirm('Are you sure you want to delete this child? This action cannot be undone.')) {
+        function deleteChildConfirmed(id) {
             $.ajax({
-                url: CHILD_API_BASE_URL + '/' + childId,
+                url: `/api/children/${id}`,
                 method: 'DELETE',
                 success: function() {
-                    showSuccess('Child deleted successfully');
                     loadChildren();
                     loadStatistics();
+                    closeDeleteModal();
+                    showSuccess('Child deleted successfully!');
                 },
-                error: function(xhr, status, error) {
-                    console.error('Error deleting child:', error);
-                    showError('Failed to delete child');
+                error: function(xhr) {
+                    showError('Error deleting child: ' + xhr.responseText);
                 }
             });
         }
-    }
 
-    // Close modal
-    function closeModal() {
-        $('#childModal').hide();
-        editingChildId = null;
-    }
-
-    // Export data
-    function exportData() {
-        if (currentChildren.length === 0) {
-            showError('No data to export');
-            return;
+        function searchChildren(searchTerm) {
+            $.ajax({
+                url: '/api/children/search',
+                method: 'GET',
+                data: { term: searchTerm },
+                success: function(data) {
+                    currentChildren = data;
+                    displayChildren(data);
+                },
+                error: function(xhr) {
+                    showError('Error searching children: ' + xhr.responseText);
+                }
+            });
         }
 
-        const csvContent = convertToCSV(currentChildren);
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
+        function filterChildren(searchTerm) {
+            const filteredChildren = currentChildren.filter(child => {
+                const fullName = (child.firstName + ' ' + child.lastName).toLowerCase();
+                return fullName.includes(searchTerm) ||
+                    (child.gender && child.gender.toLowerCase().includes(searchTerm)) ||
+                    child.status.toLowerCase().includes(searchTerm);
+            });
 
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'children_data.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        showSuccess('Data exported successfully');
-    }
-
-    // Convert data to CSV
-    function convertToCSV(data) {
-        const headers = ['ID', 'First Name', 'Last Name', 'Date of Birth', 'Gender', 'Age', 'Status', 'Admission Date', 'Background Story'];
-        let csv = headers.join(',') + '\n';
-
-        data.forEach(child => {
-            const age = calculateAge(child.dateOfBirth);
-            const row = [
-                child.id,
-                '"' + child.firstName + '"',
-                '"' + child.lastName + '"',
-                child.dateOfBirth || '',
-                child.gender || '',
-                age,
-                child.status,
-                child.admissionDate || '',
-                '"' + (child.backgroundStory || '').replace(/"/g, '""') + '"'
-            ];
-            csv += row.join(',') + '\n';
-        });
-
-        return csv;
-    }
-
-    // Utility functions
-    function calculateAge(birthDate) {
-        if (!birthDate) return 'N/A';
-
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
+            displayChildren(filteredChildren);
         }
 
-        return age + ' years';
-    }
+        function filterByStatus(status) {
+            if (status === '') {
+                displayChildren(currentChildren);
+                return;
+            }
 
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    }
-
-    function showSuccess(message) {
-        const alertDiv = $('<div class="alert alert-success">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    function showError(message) {
-        const alertDiv = $('<div class="alert alert-error">' + message + '</div>');
-        $('.container').prepend(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    // Close modal when clicking outside
-    $(window).click(function(event) {
-        if (event.target.id === 'childModal') {
-            closeModal();
+            $.ajax({
+                url: `/api/children/status/${status}`,
+                method: 'GET',
+                success: function(data) {
+                    currentChildren = data;
+                    displayChildren(data);
+                },
+                error: function(xhr) {
+                    showError('Error filtering children: ' + xhr.responseText);
+                }
+            });
         }
+
+        function exportData() {
+            if (currentChildren.length === 0) {
+                showError('No data to export');
+                return;
+            }
+
+            const csvContent = convertToCSV(currentChildren);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'children_data.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('Data exported successfully!');
+        }
+
+        function convertToCSV(data) {
+            const headers = ['ID', 'First Name', 'Last Name', 'Date of Birth', 'Gender', 'Age', 'Status', 'Admission Date', 'Background Story'];
+            let csv = headers.join(',') + '\n';
+
+            data.forEach(child => {
+                const age = calculateAge(child.dateOfBirth);
+                const row = [
+                    child.id,
+                    '"' + child.firstName + '"',
+                    '"' + child.lastName + '"',
+                    child.dateOfBirth || '',
+                    child.gender || '',
+                    age,
+                    child.status,
+                    child.admissionDate || '',
+                    '"' + (child.backgroundStory || '').replace(/"/g, '""') + '"'
+                ];
+                csv += row.join(',') + '\n';
+            });
+
+            return csv;
+        }
+
+        function showLoading(show) {
+            if (show) {
+                $('#childrenTableContent').html(`
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading children...</p>
+                    </div>
+                `);
+            }
+        }
+
+        function showSuccess(message) {
+            const alertDiv = $('<div class="alert alert-success">' + message + '</div>');
+            $('.container').prepend(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        function showError(message) {
+            const alertDiv = $('<div class="alert alert-error">' + message + '</div>');
+            $('.container').prepend(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        // Global functions for button onclick events
+        window.editChild = editChild;
+        window.deleteChild = deleteChild;
     });
 </script>
 </body>
