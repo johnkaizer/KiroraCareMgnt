@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Volunteer Records</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="3" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateX(-100px); }
+            100% { transform: translateX(100px); }
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .welcome-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px 30px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .volunteer-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .volunteer-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .volunteer-details h3 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .volunteer-details p {
+            color: #6c757d;
+            margin: 2px 0;
+        }
+
+        .controls {
+            padding: 30px;
+            background: white;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.6);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 20px;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input, .filter-select {
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .search-input:focus, .filter-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .stat-card p {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .records-table {
+            margin: 30px;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 0;
+        }
+
+        .record-row {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1.5fr;
+            gap: 20px;
+            padding: 20px;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s ease;
+        }
+
+        .table-header .record-row {
+            font-weight: 600;
+            border-bottom: none;
+            background: transparent;
+        }
+
+        .table-content .record-row:hover {
+            background-color: #f8f9fa;
+        }
+
+        .record-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .record-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .record-hours {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-in-progress {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-pending {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-edit {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+        .close:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-radius: 0 0 20px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #6c757d;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 30px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #dee2e6;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-container {
+                flex-direction: column;
+            }
+
+            .search-input, .filter-select {
+                width: 100%;
+            }
+
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                padding: 20px;
+            }
+
+            .record-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                text-align: left;
+            }
+
+            .table-header {
+                display: none;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1><i class="fas fa-heart"></i> My Volunteer Records</h1>
+        <p>Track and manage your volunteering activities</p>
+    </div>
+
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <div class="volunteer-info">
+            <div class="volunteer-avatar" id="volunteerAvatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="volunteer-details">
+                <h3 id="volunteerName">Loading...</h3>
+                <p id="volunteerRole">Volunteer</p>
+                <p id="volunteerStatus">Status: <span id="statusText">Active</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button class="btn btn-primary" id="addRecordBtn">
+            <i class="fas fa-plus"></i> Add New Record
+        </button>
+        <button class="btn btn-secondary" id="exportBtn">
+            <i class="fas fa-download"></i> Export Records
+        </button>
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search records...">
+            <select class="filter-select" id="statusFilter">
+                <option value="">All Status</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="PENDING">Pending</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <h3 id="totalRecords">0</h3>
+            <p>Total Records</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="totalHours">0</h3>
+            <p>Total Hours</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="completedRecords">0</h3>
+            <p>Completed</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="pendingRecords">0</h3>
+            <p>Pending</p>
+        </div>
+    </div>
+
+    <!-- Records Table -->
+    <div class="records-table">
+        <div class="table-header">
+            <div class="record-row">
+                <div>Activity & Description</div>
+                <div>Date</div>
+                <div>Hours</div>
+                <div>Status</div>
+                <div>Supervisor</div>
+                <div>Actions</div>
+            </div>
+        </div>
+        <div class="table-content" id="recordsTableContent">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading your records...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Record Modal -->
+<div id="recordModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Record</h2>
+            <button class="close" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="recordForm">
+                <input type="hidden" id="recordId" value="">
+
+                <div class="form-group">
+                    <label for="activityTitle">Activity Title *</label>
+                    <input type="text" id="activityTitle" name="activityTitle" required
+                           placeholder="e.g., Children's Art Workshop, Community Clean-up">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description"
+                              placeholder="Describe what you did during this volunteer activity..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="activityDate">Date *</label>
+                        <input type="date" id="activityDate" name="activityDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="hoursWorked">Hours Worked *</label>
+                        <input type="number" id="hoursWorked" name="hoursWorked"
+                               min="0.5" step="0.5" required placeholder="e.g., 3.5">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            <option value="COMPLETED">Completed</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="PENDING">Pending Verification</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location"
+                               placeholder="e.g., Community Center, School">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="supervisor">Supervisor/Contact Person</label>
+                    <input type="text" id="supervisor" name="supervisor"
+                           placeholder="Name of person who supervised this activity">
+                </div>
+
+                <div class="form-group">
+                    <label for="beneficiaries">Number of Beneficiaries</label>
+                    <input type="number" id="beneficiaries" name="beneficiaries"
+                           min="0" placeholder="How many people benefited from this activity?">
+                </div>
+
+                <div class="form-group">
+                    <label for="skills">Skills Used/Developed</label>
+                    <textarea id="skills" name="skills"
+                              placeholder="What skills did you use or develop? e.g., teaching, communication, leadership..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Additional Notes</label>
+                    <textarea id="notes" name="notes"
+                              placeholder="Any additional comments or observations..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="btn btn-success" id="saveBtn">
+                <i class="fas fa-save"></i> Save Record
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2>Confirm Delete</h2>
+            <button class="close" id="closeDeleteModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this record? This action cannot be undone.</p>
+            <p><strong id="deleteRecordTitle"></strong></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+            <button class="btn btn-danger" id="confirmDeleteBtn">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Global variables
+        let currentRecordId = null;
+        let currentRecords = [];
+        let currentUser = null;
+        let isEditing = false;
+
+        // Initialize the page
+        init();
+
+        function init() {
+            loadCurrentUser();
+            bindEvents();
+        }
+
+        function bindEvents() {
+            // Add record button
+            $('#addRecordBtn').click(function() {
+                openModal('add');
+            });
+
+            // Modal close events
+            $('#closeModal, #cancelBtn').click(closeModal);
+            $('#closeDeleteModal, #cancelDeleteBtn').click(closeDeleteModal);
+
+            // Form submission
+            $('#recordForm').submit(function(e) {
+                e.preventDefault();
+                saveRecord();
+            });
+
+            // Save button click
+            $('#saveBtn').click(function(e) {
+                e.preventDefault();
+                saveRecord();
+            });
+
+            // Search functionality
+            $('#searchInput').on('input', function() {
+                const searchTerm = $(this).val().toLowerCase();
+                filterRecords(searchTerm);
+            });
+
+            // Status filter
+            $('#statusFilter').change(function() {
+                const status = $(this).val();
+                filterByStatus(status);
+            });
+
+            // Export button
+            $('#exportBtn').click(exportRecords);
+
+            // Delete confirmation
+            $('#confirmDeleteBtn').click(function() {
+                deleteRecordConfirmed(currentRecordId);
+            });
+
+            // Close modal when clicking outside
+            $('.modal').click(function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+        }
+
+        function loadCurrentUser() {
+            $.ajax({
+                url: '/api/users/me',
+                method: 'GET',
+                success: function(user) {
+                    currentUser = user;
+                    displayUserInfo(user);
+                    loadVolunteerRecords();
+                    loadStatistics();
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        showError('Error loading user information');
+                    }
+                }
+            });
+        }
+
+        function displayUserInfo(user) {
+            $('#volunteerName').text(user.fullName);
+            $('#volunteerRole').text('Role: ' + user.role.replace('_', ' '));
+
+            // Set avatar with first letter of name
+            const initial = user.fullName.charAt(0).toUpperCase();
+            $('#volunteerAvatar').text(initial);
+        }
+
+        function loadVolunteerRecords() {
+            if (!currentUser) {
+                setTimeout(loadVolunteerRecords, 500);
+                return;
+            }
+
+            showLoading(true);
+
+            $.ajax({
+                url: `/api/volunteer-records/user/${currentUser.id}`,
+                method: 'GET',
+                success: function(records) {
+                    currentRecords = records;
+                    displayRecords(records);
+                    showLoading(false);
+                },
+                error: function(xhr) {
+                    console.error('Error loading volunteer records:', xhr);
+                    showError('Error loading volunteer records');
+                    showLoading(false);
+                    displayEmptyState();
+                }
+            });
+        }
+
+        function loadStatistics() {
+            if (!currentUser) {
+                setTimeout(loadStatistics, 500);
+                return;
+            }
+
+            // Calculate statistics from current records
+            updateStatistics(currentRecords);
+
+            // Also make API calls for more accurate statistics
+            $.ajax({
+                url: `/api/volunteer-records/user/${currentUser.id}/statistics`,
+                method: 'GET',
+                success: function(stats) {
+                    $('#totalRecords').text(stats.totalRecords || 0);
+                    $('#totalHours').text(stats.totalHours || 0);
+                    $('#completedRecords').text(stats.completedRecords || 0);
+                    $('#pendingRecords').text(stats.pendingRecords || 0);
+                },
+                error: function() {
+                    // Use calculated statistics as fallback
+                    updateStatistics(currentRecords);
+                }
+            });
+        }
+
+        function updateStatistics(records) {
+            const total = records.length;
+            const totalHours = records.reduce((sum, record) => sum + (record.hoursWorked || 0), 0);
+            const completed = records.filter(r => r.status === 'COMPLETED').length;
+            const pending = records.filter(r => r.status === 'PENDING').length;
+
+            $('#totalRecords').text(total);
+            $('#totalHours').text(totalHours.toFixed(1));
+            $('#completedRecords').text(completed);
+            $('#pendingRecords').text(pending);
+        }
+
+        function displayRecords(records) {
+            const tableContent = $('#recordsTableContent');
+
+            if (records.length === 0) {
+                displayEmptyState();
+                return;
+            }
+
+            let html = '';
+            records.forEach(record => {
+                const statusClass = 'status-' + record.status.toLowerCase().replace('_', '-');
+
+                html += `
+                <div class="record-row">
+                    <div>
+                        <div class="record-title">${record.activityTitle}</div>
+                        <div class="record-description">${record.description || 'No description'}</div>
+                    </div>
+                    <div>${formatDate(record.activityDate)}</div>
+                    <div class="record-hours">${record.hoursWorked}h</div>
+                    <div><span class="status-badge ${statusClass}">${formatStatus(record.status)}</span></div>
+                    <div>${record.supervisor || 'N/A'}</div>
+                    <div class="actions">
+                        <button class="btn-sm btn-edit" onclick="editRecord(${record.id})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-sm btn-delete" onclick="deleteRecord(${record.id}, '${record.activityTitle}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            });
+
+            tableContent.html(html);
+        }
+
+        function displayEmptyState() {
+            const tableContent = $('#recordsTableContent');
+            tableContent.html(`
+            <div class="empty-state">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>No volunteer records yet</h3>
+                <p>Start by adding your first volunteer activity record</p>
+            </div>
+        `);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function formatStatus(status) {
+            return status.replace('_', ' ').toLowerCase()
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        }
+
+        function openModal(mode, recordId = null) {
+            isEditing = mode === 'edit';
+
+            if (isEditing) {
+                $('#modalTitle').text('Edit Record');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Update');
+            } else {
+                $('#modalTitle').text('Add New Record');
+                $('#recordForm')[0].reset();
+                $('#recordId').val('');
+                $('#saveBtn').html('<i class="fas fa-save"></i> Save');
+                // Set default date to today
+                $('#activityDate').val(new Date().toISOString().split('T')[0]);
+            }
+
+            $('#recordModal').show();
+            $('#activityTitle').focus();
+        }
+
+        function closeModal() {
+            $('#recordModal').hide();
+            $('#recordForm')[0].reset();
+            currentRecordId = null;
+        }
+
+        function closeDeleteModal() {
+            $('#deleteModal').hide();
+            currentRecordId = null;
+        }
+
+        function saveRecord() {
+            // Validate required fields
+            const title = $('#activityTitle').val().trim();
+            const date = $('#activityDate').val();
+            const hours = $('#hoursWorked').val();
+
+            if (!title || !date || !hours) {
+                showError('Please fill in all required fields (Activity Title, Date, and Hours)');
+                return;
+            }
+
+            if (parseFloat(hours) <= 0) {
+                showError('Hours worked must be greater than 0');
+                return;
+            }
+
+            const recordId = $('#recordId').val();
+            const recordData = {
+                activityTitle: title,
+                description: $('#description').val().trim() || null,
+                activityDate: date,
+                hoursWorked: parseFloat(hours),
+                status: $('#status').val() || 'COMPLETED',
+                location: $('#location').val().trim() || null,
+                supervisor: $('#supervisor').val().trim() || null,
+                beneficiaries: $('#beneficiaries').val() ? parseInt($('#beneficiaries').val()) : null,
+                skills: $('#skills').val().trim() || null,
+                notes: $('#notes').val().trim() || null,
+                userId: currentUser.id
+            };
+
+            const url = recordId ? `/api/volunteer-records/${recordId}` : '/api/volunteer-records';
+            const method = recordId ? 'PUT' : 'POST';
+
+            $.ajax({
+                url: url,
+                method: method,
+                contentType: 'application/json',
+                data: JSON.stringify(recordData),
+                success: function(response) {
+                    loadVolunteerRecords();
+                    loadStatistics();
+                    closeModal();
+                    const message = recordId ? 'Record updated successfully!' : 'Record added successfully!';
+                    showSuccess(message);
+                },
+                error: function(xhr) {
+                    console.error('Error saving record:', xhr);
+                    const errorMessage = xhr.responseJSON?.message || 'Error saving record';
+                    showError(errorMessage);
+                }
+            });
+        }
+
+        function editRecord(id) {
+            // Find record in current data
+            const record = currentRecords.find(r => r.id === id);
+            if (record) {
+                populateForm(record);
+                openModal('edit', record.id);
+            } else {
+                // Fallback to API call if not found in current data
+                $.ajax({
+                    url: `/api/volunteer-records/${id}`,
+                    method: 'GET',
+                    success: function(record) {
+                        populateForm(record);
+                        openModal('edit', record.id);
+                    },
+                    error: function(xhr) {
+                        showError('Error fetching record details');
+                    }
+                });
+            }
+        }
+
+        function populateForm(record) {
+            $('#recordId').val(record.id);
+            $('#activityTitle').val(record.activityTitle);
+            $('#description').val(record.description || '');
+            $('#activityDate').val(record.activityDate);
+            $('#hoursWorked').val(record.hoursWorked);
+            $('#status').val(record.status);
+            $('#location').val(record.location || '');
+            $('#supervisor').val(record.supervisor || '');
+            $('#beneficiaries').val(record.beneficiaries || '');
+            $('#skills').val(record.skills || '');
+            $('#notes').val(record.notes || '');
+        }
+
+        function deleteRecord(id, title) {
+            currentRecordId = id;
+            $('#deleteRecordTitle').text(title);
+            $('#deleteModal').show();
+        }
+
+        function deleteRecordConfirmed(id) {
+            $.ajax({
+                url: `/api/volunteer-records/${id}`,
+                method: 'DELETE',
+                success: function() {
+                    loadVolunteerRecords();
+                    loadStatistics();
+                    closeDeleteModal();
+                    showSuccess('Record deleted successfully!');
+                },
+                error: function(xhr) {
+                    console.error('Error deleting record:', xhr);
+                    showError('Error deleting record');
+                }
+            });
+        }
+
+        function filterRecords(searchTerm) {
+            if (searchTerm === '') {
+                displayRecords(currentRecords);
+                return;
+            }
+
+            const filteredRecords = currentRecords.filter(record => {
+                const title = (record.activityTitle || '').toLowerCase();
+                const description = (record.description || '').toLowerCase();
+                const supervisor = (record.supervisor || '').toLowerCase();
+                const location = (record.location || '').toLowerCase();
+                const skills = (record.skills || '').toLowerCase();
+
+                return title.includes(searchTerm) ||
+                    description.includes(searchTerm) ||
+                    supervisor.includes(searchTerm) ||
+                    location.includes(searchTerm) ||
+                    skills.includes(searchTerm) ||
+                    record.status.toLowerCase().includes(searchTerm);
+            });
+
+            displayRecords(filteredRecords);
+        }
+
+        function filterByStatus(status) {
+            if (status === '') {
+                displayRecords(currentRecords);
+                return;
+            }
+
+            const filteredRecords = currentRecords.filter(record => record.status === status);
+            displayRecords(filteredRecords);
+        }
+
+        function exportRecords() {
+            if (currentRecords.length === 0) {
+                showError('No records to export');
+                return;
+            }
+
+            const csvContent = convertToCSV(currentRecords);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'my_volunteer_records.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('Records exported successfully!');
+        }
+
+        function convertToCSV(data) {
+            const headers = ['Activity Title', 'Description', 'Date', 'Hours', 'Status', 'Location', 'Supervisor', 'Beneficiaries', 'Skills', 'Notes'];
+            let csv = headers.join(',') + '\n';
+
+            data.forEach(record => {
+                const row = [
+                    '"' + (record.activityTitle || '') + '"',
+                    '"' + (record.description || '').replace(/"/g, '""') + '"',
+                    record.activityDate || '',
+                    record.hoursWorked || 0,
+                    record.status || '',
+                    '"' + (record.location || '') + '"',
+                    '"' + (record.supervisor || '') + '"',
+                    record.beneficiaries || '',
+                    '"' + (record.skills || '').replace(/"/g, '""') + '"',
+                    '"' + (record.notes || '').replace(/"/g, '""') + '"'
+                ];
+                csv += row.join(',') + '\n';
+            });
+
+            return csv;
+        }
+
+        function showLoading(show) {
+            if (show) {
+                $('#recordsTableContent').html(`
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading your records...</p>
+                    </div>
+                `);
+            }
+        }
+
+        function showSuccess(message) {
+            const alertDiv = $(`
+                <div class="alert alert-success" style="position: fixed; top: 20px; right: 20px; z-index: 3000;
+                     padding: 1rem 1.5rem; border-radius: 12px; color: white; font-weight: 500;
+                     max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                     background: linear-gradient(135deg, #27ae60, #2ecc71);
+                     animation: slideInRight 0.3s ease;">
+                    <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>
+                    ${message}
+                </div>
+            `);
+            $('body').append(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        function showError(message) {
+            const alertDiv = $(`
+                <div class="alert alert-error" style="position: fixed; top: 20px; right: 20px; z-index: 3000;
+                     padding: 1rem 1.5rem; border-radius: 12px; color: white; font-weight: 500;
+                     max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                     background: linear-gradient(135deg, #e74c3c, #c0392b);
+                     animation: slideInRight 0.3s ease;">
+                    <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+                    ${message}
+                </div>
+            `);
+            $('body').append(alertDiv);
+            setTimeout(() => alertDiv.remove(), 7000);
+        }
+
+        // Global functions for button onclick events
+        window.editRecord = editRecord;
+        window.deleteRecord = deleteRecord;
+    });
+
+    // Add animation CSS
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+</body>
+</html>
